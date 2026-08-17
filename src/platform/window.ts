@@ -1,4 +1,4 @@
-import { PhysicalPosition } from "@tauri-apps/api/dpi";
+import { PhysicalPosition, PhysicalSize } from "@tauri-apps/api/dpi";
 import {
   availableMonitors,
   getCurrentWindow,
@@ -9,7 +9,38 @@ import type { PetPreferences, PrefStore } from "../storage/preferences";
 const EDGE_MARGIN_X = 24;
 const EDGE_MARGIN_Y = 56;
 
+/** 布局按 300x320 CSS 像素设计 */
+export const WINDOW_CSS_WIDTH = 300;
+export const WINDOW_CSS_HEIGHT = 320;
+
 export const appWindow = getCurrentWindow();
+
+/**
+ * 高 DPI 适配：用逻辑尺寸重设窗口，保证任何缩放比例下
+ * WebView 视口都是 300x320 CSS 像素（125% → 物理 375x400）。
+ * 放在前端调用是因为页面加载时 scale factor 已确定。
+ */
+/**
+ * 让 WebView 视口恒为 300x320 CSS 像素。
+ *
+ * 必须用 window.devicePixelRatio 而不是 Tauri 的 scaleFactor()：
+ * Windows 辅助功能"文本大小"(TextScaleFactor) 也会改变 WebView2 的
+ * dpr（例如 100% DPI + 128% 文本缩放 → dpr=1.28），但 Tauri 侧
+ * scaleFactor() 只反映系统 DPI（返回 1.0），会漏掉文本缩放。
+ */
+export async function syncWindowSizeToViewport(): Promise<void> {
+  try {
+    const dpr = window.devicePixelRatio || 1;
+    await appWindow.setSize(
+      new PhysicalSize(
+        Math.round(WINDOW_CSS_WIDTH * dpr),
+        Math.round(WINDOW_CSS_HEIGHT * dpr),
+      ),
+    );
+  } catch (error) {
+    console.error("sync window size to viewport failed:", error);
+  }
+}
 
 export async function applyAlwaysOnTop(value: boolean): Promise<void> {
   await appWindow.setAlwaysOnTop(value);

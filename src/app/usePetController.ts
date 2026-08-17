@@ -28,6 +28,7 @@ import {
   applyAlwaysOnTop,
   restorePosition,
   savePositionToPrefs,
+  syncWindowSizeToViewport,
 } from "../platform/window";
 import {
   loadPreferences,
@@ -252,6 +253,7 @@ export function usePetController(): PetController {
       } catch (error) {
         console.error("apply always on top failed:", error);
       }
+      await syncWindowSizeToViewport();
       await restorePosition(prefsRef.current);
 
       try {
@@ -282,6 +284,16 @@ export function usePetController(): PetController {
         }, 800);
       });
       unlisteners.push(unMoved);
+
+      // 跨显示器 / 系统缩放变化时，保持 WebView 视口恒为 300x320 CSS
+      try {
+        const unScale = await appWindow.onScaleChanged(() => {
+          void syncWindowSizeToViewport();
+        });
+        unlisteners.push(unScale);
+      } catch (error) {
+        console.error("listen scale change failed:", error);
+      }
 
       // 启动时的一次性 / 纪念日触发
       window.setTimeout(() => {
