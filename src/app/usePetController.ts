@@ -259,8 +259,11 @@ export function usePetController(): PetController {
       try {
         setAutostart(await autostartIsEnabled());
         setAutostartSupported(true);
-      } catch {
+      } catch (error) {
         // 开发模式下未安装到系统，autostart 查询失败属于预期
+        void invoke("log_frontend", {
+          message: `autostart-init-error: ${String(error)}`,
+        }).catch(() => undefined);
         setAutostartSupported(false);
       }
 
@@ -403,6 +406,9 @@ export function usePetController(): PetController {
       setAutostart(value);
     } catch (error) {
       console.error("toggle autostart failed:", error);
+      void invoke("log_frontend", {
+        message: `autostart-toggle-error: ${String(error)}`,
+      }).catch(() => undefined);
       try {
         setAutostart(await autostartIsEnabled());
       } catch {
