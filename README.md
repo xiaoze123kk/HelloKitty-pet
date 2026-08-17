@@ -30,6 +30,8 @@ src/
   platform/     窗口位置恢复与多屏钳制
 scripts/
   gen_placeholder_assets.py    生成占位角色与图标（原创白猫）
+  apply_pet_asset.py           把单张粉色背景立绘抠图并生成 6 组动作 sheet
+  regenerate_icons.py          用同一立绘重新生成应用/托盘图标
   sync-personalization.mjs     把 personalization.example 补缺复制到 personalization
 personalization.example/       私人内容模板（profile / dates / dialogue）
 personalization/               ← 真实私人内容，已 gitignore
@@ -51,6 +53,9 @@ src-tauri/
 3. 编辑 `personalization/dialogue.json`（30–50 条对白；字段说明见 `personalization.example/README.md`）
 4. 把角色 sprite sheet 放进 `personalization/assets/`，或直接替换 `public/assets/pet/*.png`
    （素材规范：横向 sheet、240 px 帧、透明 PNG、6–12 FPS、状态命名保持一致）
+   - 若素材是一张"粉色背景 + 白猫"的方形立绘，可直接执行：
+     `python scripts/apply_pet_asset.py 立绘.png`
+     `python scripts/regenerate_icons.py 立绘.png`
 
 ## 行为节奏（内置）
 
@@ -61,8 +66,10 @@ src-tauri/
 
 ## 交付清单
 
-- [ ] 替换为正式素材与私人对白（不要使用无授权的第三方角色图片）
-- [ ] `npm run tauri build`，从 `src-tauri/target/release/bundle/nsis/` 取 `KittyPet_*_x64-setup.exe`
-- [ ] 仅在本人电脑实测：置顶、拖拽、托盘、开机启动、100%/125%/150%/200% DPI、双屏
+- [x] 正式素材已替换为用户提供的白猫立绘（2026-08-17，抠图 + 6 组动作 + 图标）
+- [ ] 替换私人对白（当前仍为示例数据，不使用无授权的第三方角色图片）
+- [x] `npm run tauri build`，从 `src-tauri/target/release/bundle/nsis/` 取 `KittyPet_*_x64-setup.exe`
+- [x] 本人电脑实测：置顶、拖拽、托盘、开机启动、100% DPI + 128% 文本缩放
+- [ ] 双屏 / 不同缩放比例屏幕组合待实机复测
 - [ ] 只私下发给收礼人（AirDrop / USB / 私密链接），不公开传播
 - [ ] 附 `docs/recipient-readme-template.md` 的说明
