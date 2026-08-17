@@ -1,0 +1,6 @@
+{
+  "specialDates": [
+    { "id": "first_meet", "month": 8, "day": 12, "label": "第一次见面的日子" },
+    { "id": "birthday", "month": 11, "day": 1, "label": "你的生日" }
+  ]
+}

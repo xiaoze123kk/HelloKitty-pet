@@ -1,0 +1,209 @@
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background: transparent;
+}
+
+body {
+  font-family:
+    "Segoe UI",
+    "Microsoft YaHei",
+    "PingFang SC",
+    system-ui,
+    -apple-system,
+    sans-serif;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+.pet-root {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+/* ---------- 拖拽区域 ---------- */
+.pet-drag-area {
+  position: absolute;
+  left: 30px;
+  top: 80px;
+  width: 240px;
+  height: 240px;
+  cursor: grab;
+}
+
+.pet-drag-area:active {
+  cursor: grabbing;
+}
+
+.pet-drag-area img,
+.pet-drag-area div {
+  pointer-events: none;
+  -webkit-user-drag: none;
+}
+
+/* ---------- 对话气泡 ---------- */
+.bubble {
+  position: absolute;
+  top: 6px;
+  left: 10px;
+  right: 10px;
+  min-height: 52px;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.96);
+  border: 2px solid #f3a9c3;
+  border-radius: 16px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
+  display: flex;
+  align-items: center;
+  z-index: 20;
+  animation: bubble-in 0.25s ease-out;
+}
+
+.bubble-text {
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: #4a3b45;
+  word-break: break-word;
+}
+
+.bubble-shy .bubble-text {
+  color: #b25b78;
+}
+
+.bubble-happy .bubble-text {
+  color: #3f7a4e;
+}
+
+.bubble-sleepy .bubble-text {
+  color: #5f6c99;
+}
+
+.bubble-concerned .bubble-text {
+  color: #a8653b;
+}
+
+.bubble-tail {
+  position: absolute;
+  bottom: -9px;
+  left: 22px;
+  width: 14px;
+  height: 14px;
+  background: rgba(255, 255, 255, 0.96);
+  border-right: 2px solid #f3a9c3;
+  border-bottom: 2px solid #f3a9c3;
+  transform: rotate(45deg);
+}
+
+@keyframes bubble-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* ---------- 设置面板 ---------- */
+.settings-panel {
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 252, 253, 0.97);
+  border: 1px solid #f3a9c3;
+  border-radius: 12px;
+  padding: 14px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+  z-index: 40;
+}
+
+.settings-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 15px;
+  font-weight: 700;
+  color: #4a3b45;
+}
+
+.settings-close {
+  border: none;
+  background: transparent;
+  font-size: 15px;
+  cursor: pointer;
+  color: #8a7a82;
+  padding: 4px 8px;
+  border-radius: 8px;
+}
+
+.settings-close:hover {
+  background: #f6e8ee;
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: #fff;
+  border: 1px solid #f0dbe5;
+  border-radius: 10px;
+  padding: 9px 11px;
+}
+
+.settings-row strong {
+  display: block;
+  font-size: 13px;
+  color: #4a3b45;
+}
+
+.settings-row small {
+  display: block;
+  font-size: 11px;
+  color: #9a8b93;
+  margin-top: 2px;
+}
+
+.settings-row input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: #e887a8;
+  flex-shrink: 0;
+}
+
+.settings-static {
+  cursor: default;
+}
+
+.settings-danger {
+  border: 1px solid #eec6d1;
+  background: #fff5f7;
+  color: #c05777;
+  font-size: 12.5px;
+  padding: 9px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.settings-danger:hover {
+  background: #fde8ee;
+}
+
+.settings-footer {
+  margin-top: auto;
+  font-size: 10.5px;
+  color: #b0a2aa;
+  text-align: center;
+  line-height: 1.5;
+}

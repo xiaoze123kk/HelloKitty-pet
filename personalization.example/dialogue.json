@@ -1,0 +1,282 @@
+{
+  "comment": "示例对白库。text 支持 {{nickname}} / {{yourNickname}} / {{daysTogether}} / {{specialDateName}}。正式内容请在 personalization/ 下替换（该目录已加入 .gitignore，不会进仓库）。",
+  "entries": [
+    {
+      "id": "first_hello",
+      "text": "hi～以后我陪你一会儿。",
+      "emotion": "happy",
+      "motion": "wave",
+      "priority": 100,
+      "trigger": { "type": "firstLaunch" },
+      "onlyOnce": true
+    },
+    {
+      "id": "morning_01",
+      "text": "早上好呀，{{nickname}}。今天也要加油。",
+      "emotion": "happy",
+      "motion": "wave",
+      "priority": 80,
+      "trigger": { "type": "timeRange", "rangeKey": "morning" },
+      "cooldownMinutes": 720,
+      "dailyLimit": 1,
+      "tags": ["早安", "关心"]
+    },
+    {
+      "id": "morning_02",
+      "text": "新的一天，我还在老地方哦。",
+      "emotion": "neutral",
+      "motion": "idle",
+      "priority": 60,
+      "trigger": { "type": "timeRange", "rangeKey": "morning" },
+      "cooldownMinutes": 720,
+      "dailyLimit": 1,
+      "tags": ["早安"]
+    },
+    {
+      "id": "noon_01",
+      "text": "坐了好久啦，起来走走，顺便喝口水。",
+      "emotion": "concerned",
+      "motion": "idle",
+      "priority": 70,
+      "trigger": { "type": "timeRange", "rangeKey": "noon" },
+      "cooldownMinutes": 240,
+      "dailyLimit": 1,
+      "tags": ["关心"]
+    },
+    {
+      "id": "night_01",
+      "text": "{{nickname}}，这么晚还不睡呀……",
+      "emotion": "sleepy",
+      "motion": "sleep",
+      "priority": 85,
+      "trigger": { "type": "timeRange", "rangeKey": "night" },
+      "cooldownMinutes": 180,
+      "dailyLimit": 1,
+      "tags": ["晚安", "关心"]
+    },
+    {
+      "id": "night_02",
+      "text": "我陪你一会儿，忙完就早点休息。",
+      "emotion": "sleepy",
+      "motion": "sleep",
+      "priority": 70,
+      "trigger": { "type": "timeRange", "rangeKey": "night" },
+      "cooldownMinutes": 180,
+      "dailyLimit": 1,
+      "tags": ["晚安"]
+    },
+    {
+      "id": "click_01",
+      "text": "干嘛呀～",
+      "emotion": "shy",
+      "motion": "shy",
+      "priority": 80,
+      "trigger": { "type": "click" },
+      "cooldownMinutes": 2,
+      "weight": 2
+    },
+    {
+      "id": "click_02",
+      "text": "被你发现我在摸鱼了。",
+      "emotion": "neutral",
+      "motion": "idle",
+      "priority": 60,
+      "trigger": { "type": "click" },
+      "cooldownMinutes": 2,
+      "weight": 2
+    },
+    {
+      "id": "click_03",
+      "text": "再戳我就要害羞了。",
+      "emotion": "shy",
+      "motion": "shy",
+      "priority": 70,
+      "trigger": { "type": "click" },
+      "cooldownMinutes": 5
+    },
+    {
+      "id": "click_04",
+      "text": "这里这里，我一直都在。",
+      "emotion": "happy",
+      "motion": "happy",
+      "priority": 70,
+      "trigger": { "type": "click" },
+      "cooldownMinutes": 10
+    },
+    {
+      "id": "click_05",
+      "text": "今天也辛苦啦。",
+      "emotion": "happy",
+      "motion": "happy",
+      "priority": 60,
+      "trigger": { "type": "click" },
+      "cooldownMinutes": 20
+    },
+    {
+      "id": "rapid_05",
+      "text": "你怎么一直戳我呀……",
+      "emotion": "shy",
+      "motion": "shy",
+      "priority": 90,
+      "trigger": { "type": "rapidClick", "minClicks": 5 },
+      "cooldownMinutes": 2,
+      "dailyLimit": 4
+    },
+    {
+      "id": "rapid_12",
+      "text": "好、好痒！不理你十秒钟！",
+      "emotion": "shy",
+      "motion": "shy",
+      "priority": 95,
+      "trigger": { "type": "rapidClick", "minClicks": 12 },
+      "cooldownMinutes": 10,
+      "dailyLimit": 2
+    },
+    {
+      "id": "drag_01",
+      "text": "这里也可以～",
+      "emotion": "neutral",
+      "motion": "idle",
+      "priority": 70,
+      "trigger": { "type": "dragEnd" },
+      "cooldownMinutes": 1
+    },
+    {
+      "id": "drag_02",
+      "text": "要把我放到哪里呀？",
+      "emotion": "shy",
+      "motion": "shy",
+      "priority": 60,
+      "trigger": { "type": "dragEnd" },
+      "cooldownMinutes": 3
+    },
+    {
+      "id": "session_90",
+      "text": "你已经连续工作很久了，起来伸个懒腰吧。",
+      "emotion": "concerned",
+      "motion": "idle",
+      "priority": 85,
+      "trigger": { "type": "sessionDuration", "minutes": 90 },
+      "cooldownMinutes": 120,
+      "dailyLimit": 2
+    },
+    {
+      "id": "streak_07",
+      "text": "你最近每天都来看我欸。",
+      "emotion": "happy",
+      "motion": "happy",
+      "priority": 90,
+      "trigger": { "type": "streak", "minStreak": 7 },
+      "onlyOnce": true
+    },
+    {
+      "id": "date_first_meet",
+      "text": "还记得今天是什么日子吗？{{specialDateName}}。",
+      "emotion": "happy",
+      "motion": "happy",
+      "priority": 95,
+      "trigger": { "type": "specialDate", "specialDateId": "first_meet" },
+      "cooldownMinutes": 525600,
+      "tags": ["彩蛋", "纪念日"]
+    },
+    {
+      "id": "date_birthday",
+      "text": "{{nickname}}，生日快乐呀。今天要开开心心的。",
+      "emotion": "happy",
+      "motion": "happy",
+      "priority": 95,
+      "trigger": { "type": "specialDate", "specialDateId": "birthday" },
+      "cooldownMinutes": 525600,
+      "tags": ["彩蛋", "生日"]
+    },
+    {
+      "id": "random_01",
+      "text": "第 {{daysTogether}} 天啦，我一直都在这里。",
+      "emotion": "neutral",
+      "motion": "idle",
+      "priority": 50,
+      "trigger": { "type": "random" },
+      "cooldownMinutes": 90,
+      "dailyLimit": 1,
+      "unlockDay": 1,
+      "tags": ["日常"]
+    },
+    {
+      "id": "random_02",
+      "text": "悄悄提醒：记得按时吃饭。",
+      "emotion": "concerned",
+      "motion": "idle",
+      "priority": 50,
+      "trigger": { "type": "random" },
+      "cooldownMinutes": 90,
+      "dailyLimit": 1,
+      "unlockDay": 0,
+      "tags": ["日常"]
+    },
+    {
+      "id": "random_03",
+      "text": "你认真做事的时候，我就安静待着。",
+      "emotion": "neutral",
+      "motion": "idle",
+      "priority": 50,
+      "trigger": { "type": "random" },
+      "cooldownMinutes": 120,
+      "dailyLimit": 1,
+      "unlockDay": 2,
+      "tags": ["日常"]
+    },
+    {
+      "id": "random_04",
+      "text": "今天的你，好像比昨天更可爱一点。",
+      "emotion": "shy",
+      "motion": "shy",
+      "priority": 50,
+      "trigger": { "type": "random" },
+      "cooldownMinutes": 180,
+      "dailyLimit": 1,
+      "unlockDay": 3,
+      "weight": 0.6,
+      "tags": ["暧昧"]
+    },
+    {
+      "id": "random_05",
+      "text": "我会假装没有一直在等你打开电脑。",
+      "emotion": "shy",
+      "motion": "shy",
+      "priority": 50,
+      "trigger": { "type": "random" },
+      "cooldownMinutes": 180,
+      "dailyLimit": 1,
+      "unlockDay": 4,
+      "weight": 0.6,
+      "tags": ["暧昧"]
+    },
+    {
+      "id": "egg_habit",
+      "text": "你是不是已经习惯我在这里了？",
+      "emotion": "neutral",
+      "motion": "idle",
+      "priority": 55,
+      "trigger": { "type": "random" },
+      "cooldownMinutes": 2880,
+      "onlyOnce": true,
+      "unlockDay": 3,
+      "weight": 0.4,
+      "tags": ["彩蛋"]
+    },
+    {
+      "id": "egg_secret",
+      "text": "其实……我不是自己跑到你电脑里的。",
+      "emotion": "shy",
+      "motion": "shy",
+      "priority": 55,
+      "trigger": { "type": "random" },
+      "cooldownMinutes": 2880,
+      "onlyOnce": true,
+      "unlockDay": 5,
+      "weight": 0.4,
+      "followUpText": "有人拜托我陪着你。",
+      "tags": ["彩蛋"]
+    }
+  ]
+}
