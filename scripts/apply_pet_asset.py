@@ -30,7 +30,7 @@ def is_pink(p):
 
 
 def cutout_mask(im):
-    """从粉色背景中抠出主体：边缘粉色 flood fill，主体内部粉色保留。"""
+    """旧版颜色泛洪（仅作回退方案）：适合"白猫 + 粉背景"。"""
     w, h = im.size
     px = im.load()
     visited = bytearray(w * h)
@@ -63,13 +63,95 @@ def cutout_mask(im):
     return mask
 
 
-def clean_cutout(im, mask):
-    """收边 1px + 羽化，减少粉边残留。"""
+def largest_component(mask, threshold=128):
+    """只保留最大连通块，去掉模型/泛洪产生的背景残留小块。"""
+    w, h = mask.size
+    data = mask.load()
+    visited = bytearray(w * h)
+    best = None
+    for sy in range(h):
+        for sx in range(w):
+            idx = sy * w + sx
+            if visited[idx] or data[sx, sy] <= threshold:
+                continue
+            comp = []
+            dq = deque([(sx, sy)])
+            visited[idx] = 1
+            while dq:
+                x, y = dq.popleft()
+                comp.append((x, y))
+                for dx, dy in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+                    nx, ny = x + dx, y + dy
+                    if 0 <= nx < w and 0 <= ny < h:
+                        nidx = ny * w + nx
+                        if not visited[nidx] and data[nx, ny] > threshold:
+                            visited[nidx] = 1
+                            dq.append((nx, ny))
+            if best is None or len(comp) > len(best):
+                best = comp
+    out = Image.new("L", (w, h), 0)
+    if best:
+        op = out.load()
+        for x, y in best:
+            op[x, y] = 255
+    return out
+
+
+def polish_mask(mask):
+    """收边 1px + 羽化。"""
     mask = mask.filter(ImageFilter.MinFilter(3))
     mask = mask.filter(ImageFilter.GaussianBlur(1.2))
+    return mask
+
+
+def decontaminate_edges(rgba):
+    """半透明边缘向白色靠拢，减少粉边光晕。"""
+    w, h = rgba.size
+    px = rgba.load()
+    for y in range(h):
+        for x in range(w):
+            r, g, b, a = px[x, y]
+            if 0 < a < 255:
+                k = (1 - a / 255) * 0.6
+                r = round(r + (255 - r) * k)
+                g = round(g + (255 - g) * k)
+                b = round(b + (255 - b) * k)
+                px[x, y] = (r, g, b, a)
+    return rgba
+
+
+def segment_with_rembg(im):
+    """优先方案：U2-Net 分割，保留与背景同色系的粉身体/蝴蝶结。"""
+    try:
+        from rembg import new_session, remove
+    except Exception as exc:  # rembg 未安装
+        print(f"rembg unavailable ({exc}), fallback to flood fill")
+        return None
+
+    session = new_session("u2net")
+    out = remove(im, session=session, alpha_matting=False).convert("RGBA")
+    a = out.getchannel("A")
+    hist = a.histogram()
+    opaque = sum(hist[129:])
+    if opaque < im.width * im.height * 0.05:
+        print("rembg result looks blank, fallback to flood fill")
+        return None
+
+    mask = largest_component(a)
+    mask = polish_mask(mask)
+    clean = Image.new("RGBA", im.size, (0, 0, 0, 0))
+    clean.paste(im.convert("RGB"), (0, 0), mask)
+    clean = decontaminate_edges(clean)
+    print(f"rembg segmentation: opaque={opaque}, largest component={sum(1 for v in mask.getdata() if v > 128)}")
+    return clean
+
+
+def segment_with_flood(im):
+    mask = largest_component(cutout_mask(im))
+    mask = polish_mask(mask)
     out = Image.new("RGBA", im.size, (0, 0, 0, 0))
     out.paste(im.convert("RGB"), (0, 0), mask)
-    return out
+    return decontaminate_edges(out)
 
 
 def fit_canvas(cutout):
@@ -128,8 +210,7 @@ def main():
 
     im = Image.open(src).convert("RGB")
     print(f"input: {im.size}")
-    mask = cutout_mask(im)
-    cut = clean_cutout(im, mask)
+    cut = segment_with_rembg(im) or segment_with_flood(im)
     base = fit_canvas(cut)
     print(f"subject bbox: {cut.getbbox()}, frame: {FRAME}x{FRAME}")
 
