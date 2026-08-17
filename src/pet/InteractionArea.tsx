@@ -8,6 +8,8 @@ interface InteractionAreaProps {
   onDragStart: () => void;
   onDragEnd: () => void;
   onOpenSettings: () => void;
+  /** Ctrl+滚轮缩放（deltaY < 0 放大，> 0 缩小） */
+  onWheelZoom?: (deltaY: number) => void;
 }
 
 const DRAG_THRESHOLD_PX = 6;
@@ -27,7 +29,9 @@ export function InteractionArea({
   onDragStart,
   onDragEnd,
   onOpenSettings,
+  onWheelZoom,
 }: InteractionAreaProps) {
+  const areaRef = useRef<HTMLDivElement | null>(null);
   const downRef = useRef<{ x: number; y: number; time: number } | null>(null);
   const draggingRef = useRef(false);
   const lastMovedAtRef = useRef(0);
@@ -36,9 +40,31 @@ export function InteractionArea({
   const onClickRef = useRef(onClick);
   const onDragStartRef = useRef(onDragStart);
   const onDragEndRef = useRef(onDragEnd);
+  const onWheelZoomRef = useRef(onWheelZoom);
+  const disabledRef = useRef(disabled);
   onClickRef.current = onClick;
   onDragStartRef.current = onDragStart;
   onDragEndRef.current = onDragEnd;
+  onWheelZoomRef.current = onWheelZoom;
+  disabledRef.current = disabled;
+
+  useEffect(() => {
+    const area = areaRef.current;
+    if (!area) return;
+
+    // React 的 onWheel 默认挂 passive 监听，无法 preventDefault，
+    // 因此用原生监听拦截 WebView 的 Ctrl+滚轮页面缩放。
+    function handleWheel(event: WheelEvent) {
+      if (!event.ctrlKey || disabledRef.current) return;
+      event.preventDefault();
+      onWheelZoomRef.current?.(event.deltaY);
+    }
+
+    area.addEventListener("wheel", handleWheel, { passive: false });
+    return () => {
+      area.removeEventListener("wheel", handleWheel);
+    };
+  }, []);
 
   useEffect(() => {
     const appWindow = getCurrentWindow();
@@ -131,6 +157,7 @@ export function InteractionArea({
 
   return (
     <div
+      ref={areaRef}
       className="pet-drag-area"
       data-tauri-drag-region
       onPointerDown={handlePointerDown}

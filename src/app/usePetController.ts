@@ -15,10 +15,7 @@ import {
   dateKey,
 } from "../dialogue/triggers";
 import type { DialogueDisplay, TriggerContext } from "../dialogue/types";
-import {
-  petMotions,
-  type MotionConfig,
-} from "../pet/animationManifest";
+import type { PetVisualMotion } from "../pet/animationManifest";
 import {
   petMachine,
   stateToMotion,
@@ -28,8 +25,14 @@ import {
   applyAlwaysOnTop,
   restorePosition,
   savePositionToPrefs,
+  setWindowScale,
   syncWindowSizeToViewport,
 } from "../platform/window";
+import {
+  clampScale,
+  DEFAULT_SCALE,
+  SCALE_STEP,
+} from "../pet/zoom";
 import {
   loadPreferences,
   savePreferences,
@@ -50,7 +53,8 @@ type PetSnapshot = SnapshotFrom<typeof petMachine>;
 const TICK_INTERVAL_MS = 30_000;
 
 export interface PetController {
-  motionConfig: MotionConfig;
+  /** 状态机当前动作（驱动程序化动画 / sheet 兜底） */
+  motion: PetVisualMotion;
   bubble: DialogueDisplay | null;
   followUp: boolean;
   settingsOpen: boolean;
@@ -58,6 +62,8 @@ export interface PetController {
   alwaysOnTop: boolean;
   autostart: boolean;
   autostartSupported: boolean;
+  /** 整体缩放比例（0.5 – 2.0） */
+  scale: number;
   /** 初始化或渲染期致命错误（用于在透明窗口里显示出来，避免"隐形窗口"） */
   fatal: string | null;
   openSettings: () => void;
@@ -66,6 +72,10 @@ export interface PetController {
   onPetDragStart: () => void;
   onPetDragEnd: () => void;
   onAnimationFinished: () => void;
+  /** 设置面板：直接指定缩放比例 */
+  onScaleChange: (value: number) => void;
+  /** 桌宠上 Ctrl+滚轮：按 deltaY 方向步进缩放 */
+  onWheelZoom: (deltaY: number) => void;
   toggleAlwaysOnTop: (value: boolean) => void;
   toggleDnd: (value?: boolean) => void;
   toggleAutostart: (value: boolean) => void;
@@ -87,6 +97,7 @@ export function usePetController(): PetController {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [dnd, setDnd] = useState(false);
   const [alwaysOnTop, setAlwaysOnTop] = useState(true);
+  const [scale, setScale] = useState(DEFAULT_SCALE);
   const [autostart, setAutostart] = useState(false);
   const [autostartSupported, setAutostartSupported] = useState(false);
   const [fatal, setFatal] = useState<string | null>(null);
@@ -97,7 +108,11 @@ export function usePetController(): PetController {
     position: null,
     alwaysOnTop: true,
     dnd: false,
+    scale: DEFAULT_SCALE,
   });
+  const scaleRef = useRef(DEFAULT_SCALE);
+  /** 串行化窗口缩放：滚轮/滑杆可能连续触发，避免 setSize 乱序 */
+  const scaleChainRef = useRef<Promise<void>>(Promise.resolve());
   const progressRef = useRef<ProgressData | null>(null);
   const engineRef = useRef<DialogueEngine | null>(null);
   const installedAtRef = useRef<Date>(new Date());
@@ -230,6 +245,8 @@ export function usePetController(): PetController {
       dndRef.current = prefsLoaded.prefs.dnd;
       setDnd(prefsLoaded.prefs.dnd);
       setAlwaysOnTop(prefsLoaded.prefs.alwaysOnTop);
+      scaleRef.current = prefsLoaded.prefs.scale;
+      setScale(prefsLoaded.prefs.scale);
 
       const now = Date.now();
       const today = dateKey(new Date(now));
@@ -253,7 +270,7 @@ export function usePetController(): PetController {
       } catch (error) {
         console.error("apply always on top failed:", error);
       }
-      await syncWindowSizeToViewport();
+      await syncWindowSizeToViewport(prefsRef.current.scale);
       await restorePosition(prefsRef.current);
 
       try {
@@ -288,10 +305,10 @@ export function usePetController(): PetController {
       });
       unlisteners.push(unMoved);
 
-      // 跨显示器 / 系统缩放变化时，保持 WebView 视口恒为 300x320 CSS
+      // 跨显示器 / 系统缩放变化时，按当前桌宠缩放比例重算物理窗口
       try {
         const unScale = await appWindow.onScaleChanged(() => {
-          void syncWindowSizeToViewport();
+          void syncWindowSizeToViewport(scaleRef.current);
         });
         unlisteners.push(unScale);
       } catch (error) {
@@ -383,6 +400,37 @@ export function usePetController(): PetController {
     actor.send({ type: "ANIMATION_FINISHED" });
   }, [actor]);
 
+  const onScaleChange = useCallback((value: number) => {
+    const next = clampScale(value);
+    if (next === scaleRef.current) return;
+
+    scaleRef.current = next;
+    prefsRef.current.scale = next;
+    setScale(next);
+
+    scaleChainRef.current = scaleChainRef.current.then(async () => {
+      try {
+        await setWindowScale(next);
+      } catch (error) {
+        console.error("apply window scale failed:", error);
+      }
+      if (prefsStoreRef.current) {
+        try {
+          await savePreferences(prefsStoreRef.current, prefsRef.current);
+        } catch (error) {
+          console.error("save scale preference failed:", error);
+        }
+      }
+    });
+  }, []);
+
+  const onWheelZoom = useCallback(
+    (deltaY: number) => {
+      onScaleChange(scaleRef.current + (deltaY < 0 ? SCALE_STEP : -SCALE_STEP));
+    },
+    [onScaleChange],
+  );
+
   const toggleAlwaysOnTop = useCallback(async (value: boolean) => {
     prefsRef.current.alwaysOnTop = value;
     setAlwaysOnTop(value);
@@ -443,6 +491,7 @@ export function usePetController(): PetController {
         position: keep.position,
         alwaysOnTop: keep.alwaysOnTop,
         dnd: keep.dnd,
+        scale: keep.scale,
       };
       if (progressStore) await saveProgress(progressStore, fresh);
       if (prefsStore) await savePreferences(prefsStore, prefsRef.current);
@@ -460,10 +509,9 @@ export function usePetController(): PetController {
   }, [actor]);
 
   const motion = stateToMotion(snapshot.value as string);
-  const motionConfig = petMotions[motion];
 
   return {
-    motionConfig,
+    motion,
     bubble,
     followUp,
     settingsOpen,
@@ -471,6 +519,7 @@ export function usePetController(): PetController {
     alwaysOnTop,
     autostart,
     autostartSupported,
+    scale,
     fatal,
     openSettings: () => setSettingsOpen(true),
     closeSettings: () => setSettingsOpen(false),
@@ -478,6 +527,8 @@ export function usePetController(): PetController {
     onPetDragStart,
     onPetDragEnd,
     onAnimationFinished,
+    onScaleChange,
+    onWheelZoom,
     toggleAlwaysOnTop,
     toggleDnd,
     toggleAutostart,

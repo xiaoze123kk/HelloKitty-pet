@@ -154,8 +154,8 @@ def segment_with_flood(im):
     return decontaminate_edges(out)
 
 
-def fit_canvas(cutout):
-    """裁到主体 bbox 并缩放到 238x238 居中（四周留 1px 呼吸空间）。"""
+def fit_canvas(cutout, size=FRAME):
+    """裁到主体 bbox 并缩放到 (size-2)x(size-2) 居中（四周留 1px 呼吸空间）。"""
     bbox = cutout.getbbox()
     if bbox is None:
         raise SystemExit("抠图结果为空，请检查输入图片")
@@ -165,11 +165,11 @@ def fit_canvas(cutout):
     right = min(cutout.width, bbox[2] + margin)
     bottom = min(cutout.height, bbox[3] + margin)
     subject = cutout.crop((left, top, right, bottom))
-    scale = min((FRAME - 2) / subject.width, (FRAME - 2) / subject.height)
+    scale = min((size - 2) / subject.width, (size - 2) / subject.height)
     target = (max(1, round(subject.width * scale)), max(1, round(subject.height * scale)))
     subject = subject.resize(target, Image.LANCZOS)
-    canvas = Image.new("RGBA", (FRAME, FRAME), (0, 0, 0, 0))
-    canvas.paste(subject, ((FRAME - target[0]) // 2, (FRAME - target[1]) // 2), subject)
+    canvas = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    canvas.paste(subject, ((size - target[0]) // 2, (size - target[1]) // 2), subject)
     return canvas
 
 
@@ -201,6 +201,106 @@ def make_sheet(base, frames):
     return sheet
 
 
+# 动作定义（唯一真源）：
+# - 本脚本读它生成 240px sprite sheet
+# - scripts/export_procedural_kit.py 读它生成 motion-spec.json，供前端 Canvas 程序化动画使用
+# keyframe 字段顺序: (scale, scaleY, angle, dy) 或 ("dim", brightness)
+# base: 表情基帧（open / closed / half / happy / shy）
+# ease: 前端关键帧插值缓动（linear / sineInOut）
+MOTION_SPECS = {
+    # 6 帧：呼吸起伏
+    "idle": {
+        "fps": 6,
+        "loop": True,
+        "blink": True,
+        "base": "open",
+        "ease": "sineInOut",
+        "keyframes": [
+            (1.000, 1.000, 0, 0),
+            (1.012, 1.000, 0, -2),
+            (1.010, 1.010, 0, 0),
+            (1.000, 1.000, 0, 2),
+            (0.990, 1.000, 0, 0),
+            (1.000, 1.000, 0, -1),
+        ],
+    },
+    # 6 帧：小跳 + 落地压扁
+    "happy": {
+        "fps": 9,
+        "loop": False,
+        "blink": False,
+        "base": "happy",
+        "ease": "sineInOut",
+        "keyframes": [
+            (1.00, 1.00, 0, 0),
+            (1.04, 1.04, -3, -14),
+            (1.02, 1.02, 2, -18),
+            (1.00, 0.96, -2, 2),
+            (1.04, 1.02, 3, -8),
+            (1.00, 1.00, 0, 0),
+        ],
+    },
+    # 6 帧：害羞缩身 + 轻微左右晃
+    "shy": {
+        "fps": 8,
+        "loop": False,
+        "blink": False,
+        "base": "shy",
+        "ease": "sineInOut",
+        "keyframes": [
+            (0.96, 0.96, 0, 0),
+            (0.92, 0.92, -3, 2),
+            (0.93, 0.94, 0, 1),
+            (0.90, 0.91, 2, 2),
+            (0.94, 0.94, 0, 0),
+            (0.97, 0.97, 1, 0),
+        ],
+    },
+    # 4 帧：压扁回弹（被点击）
+    "clicked": {
+        "fps": 10,
+        "loop": False,
+        "blink": False,
+        "base": "open",
+        "ease": "linear",
+        "keyframes": [
+            (1.08, 0.90, 0, 4),
+            (1.00, 1.00, 0, 0),
+            (1.05, 0.94, 0, 2),
+            (1.00, 1.00, 0, 0),
+        ],
+    },
+    # 4 帧：困倦慢晃 + 下沉
+    "sleepy": {
+        "fps": 3,
+        "loop": True,
+        "blink": True,
+        "base": "half",
+        "ease": "sineInOut",
+        "keyframes": [
+            (1.00, 1.00, -2, 1),
+            (0.99, 1.00, -4, 3),
+            (1.00, 0.99, -2, 4),
+            (0.99, 1.00, 0, 2),
+        ],
+    },
+    # 4 帧：变暗 + 呼吸（睡觉）
+    "sleep": {
+        "fps": 3,
+        "loop": True,
+        "blink": False,
+        "base": "closed",
+        "ease": "linear",
+        "keyframes": [
+            ("dim", 0.82, 1.00, 0),
+            ("dim", 0.75, 0.985, 0),
+            ("dim", 0.78, 0.97, 0),
+            ("dim", 0.75, 0.985, 0),
+        ],
+    },
+}
+
+
 def main():
     if len(sys.argv) != 2:
         raise SystemExit(__doc__)
@@ -214,63 +314,11 @@ def main():
     base = fit_canvas(cut)
     print(f"subject bbox: {cut.getbbox()}, frame: {FRAME}x{FRAME}")
 
-    # 动作帧定义（帧数保持与 animationManifest.ts 一致）
-    specs = {
-        # 6 帧：呼吸起伏
-        "idle": [
-            (1.000, 1.000, 0, 0),
-            (1.012, 1.000, 0, -2),
-            (1.010, 1.010, 0, 0),
-            (1.000, 1.000, 0, 2),
-            (0.990, 1.000, 0, 0),
-            (1.000, 1.000, 0, -1),
-        ],
-        # 6 帧：小跳 + 落地压扁
-        "happy": [
-            (1.00, 1.00, 0, 0),
-            (1.04, 1.04, -3, -14),
-            (1.02, 1.02, 2, -18),
-            (1.00, 0.96, -2, 2),
-            (1.04, 1.02, 3, -8),
-            (1.00, 1.00, 0, 0),
-        ],
-        # 6 帧：害羞缩身 + 轻微左右晃
-        "shy": [
-            (0.96, 0.96, 0, 0),
-            (0.92, 0.92, -3, 2),
-            (0.93, 0.94, 0, 1),
-            (0.90, 0.91, 2, 2),
-            (0.94, 0.94, 0, 0),
-            (0.97, 0.97, 1, 0),
-        ],
-        # 4 帧：压扁回弹（被点击）
-        "clicked": [
-            (1.08, 0.90, 0, 4),
-            (1.00, 1.00, 0, 0),
-            (1.05, 0.94, 0, 2),
-            (1.00, 1.00, 0, 0),
-        ],
-        # 4 帧：困倦慢晃 + 下沉
-        "sleepy": [
-            (1.00, 1.00, -2, 1),
-            (0.99, 1.00, -4, 3),
-            (1.00, 0.99, -2, 4),
-            (0.99, 1.00, 0, 2),
-        ],
-        # 4 帧：变暗 + 呼吸（睡觉）
-        "sleep": [
-            ("dim", 0.82, 1.00, 0),
-            ("dim", 0.75, 0.985, 0),
-            ("dim", 0.78, 0.97, 0),
-            ("dim", 0.75, 0.985, 0),
-        ],
-    }
-
     for sheet_dir in SHEET_DIRS:
         sheet_dir.mkdir(parents=True, exist_ok=True)
-    for name, spec in specs.items():
+    for name, spec in MOTION_SPECS.items():
         frames = []
-        for item in spec:
+        for item in spec["keyframes"]:
             if item[0] == "dim":
                 frames.append(brightness_frame(base, item[1]))
             else:

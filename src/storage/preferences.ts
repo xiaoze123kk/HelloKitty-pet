@@ -1,4 +1,5 @@
 import { load } from "@tauri-apps/plugin-store";
+import { clampScale, DEFAULT_SCALE } from "../pet/zoom";
 
 export type PrefStore = Awaited<ReturnType<typeof load>>;
 
@@ -7,12 +8,15 @@ export interface PetPreferences {
   position: { x: number; y: number } | null;
   alwaysOnTop: boolean;
   dnd: boolean;
+  /** 桌宠整体缩放比例（0.5 – 2.0） */
+  scale: number;
 }
 
 export const DEFAULT_PREFERENCES: PetPreferences = {
   position: null,
   alwaysOnTop: true,
   dnd: false,
+  scale: DEFAULT_SCALE,
 };
 
 export async function loadPreferences(): Promise<{
@@ -30,6 +34,7 @@ export async function loadPreferences(): Promise<{
         : null,
     alwaysOnTop: raw?.alwaysOnTop ?? DEFAULT_PREFERENCES.alwaysOnTop,
     dnd: raw?.dnd ?? DEFAULT_PREFERENCES.dnd,
+    scale: clampScale(raw?.scale ?? DEFAULT_PREFERENCES.scale),
   };
   return { store, prefs };
 }

@@ -1,7 +1,7 @@
 # KittyPet
 
-一个私人的 Windows 桌面宠物。透明无边框、可拖拽、可点击互动、会按时间/使用时长/纪念日主动说话，
-完全离线运行，不上传任何数据。
+一个私人的 Windows 桌面宠物。透明无边框、可拖拽、可点击互动、可缩放（50%–200%），
+会按时间/使用时长/纪念日主动说话，完全离线运行，不上传任何数据。
 
 **技术栈**：Tauri 2 · React 19 · TypeScript · Vite 7 · XState 5 · Tauri Store / Autostart 插件
 
@@ -18,12 +18,17 @@ npm run tauri dev    # 开发运行
 npm run tauri build  # 生成 NSIS 安装包（target/release/bundle/nsis）
 ```
 
+缩放桌宠：右键猫咪打开设置，拖动「大小」滑杆或点 +/−（50%–200%）；也可以按住 Ctrl 在猫咪身上滚动滚轮。
+
+动画：`PetApp` 用 Canvas 程序化渲染呼吸 / 弹跳 / 挤压 / 旋转（动作参数在
+`src/assets/pet/motion-spec.json`），idle / sleepy 状态会随机眨眼；高清底图加载前自动回退到 240px sprite sheet。
+
 ## 目录结构
 
 ```
 src/
   app/          PetApp + usePetController（编排层）
-  pet/          InteractionArea / SpriteAnimation / petMachine / animationManifest
+  pet/          ProceduralAnimation / SpriteAnimation / InteractionArea / petMachine / animationManifest
   dialogue/     对白类型、引擎、触发调度、profile
   components/   SpeechBubble / SettingsPanel
   storage/      plugin-store 的 preferences / progress 封装
@@ -31,6 +36,7 @@ src/
 scripts/
   gen_placeholder_assets.py    生成占位角色与图标（原创白猫）
   apply_pet_asset.py           把单张粉色背景立绘抠图并生成 6 组动作 sheet
+  export_procedural_kit.py     从同一立绘导出 1200px 高清帧 + 自动闭眼帧 + motion-spec.json
   regenerate_icons.py          用同一立绘重新生成应用/托盘图标
   sync-personalization.mjs     把 personalization.example 补缺复制到 personalization
 personalization.example/       私人内容模板（profile / dates / dialogue）
@@ -55,6 +61,7 @@ src-tauri/
    （素材规范：横向 sheet、240 px 帧、透明 PNG、6–12 FPS、状态命名保持一致）
    - 若素材是一张"粉色背景 + 白猫"的方形立绘，可直接执行：
      `python scripts/apply_pet_asset.py 立绘.png`
+     `python scripts/export_procedural_kit.py 立绘.png`
      `python scripts/regenerate_icons.py 立绘.png`
 
 ## 行为节奏（内置）

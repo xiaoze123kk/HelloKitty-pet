@@ -31,6 +31,10 @@ src-tauri/target
 # 昵称、纪念日、私人对白、角色素材都放这里；提交前请只更新 personalization.example/
 /personalization/
 
+# Python
+__pycache__/
+*.pyc
+
 # 用户手工投放的原始素材：图片不进 git，只保留 README
 /assets/*
 !/assets/README.md

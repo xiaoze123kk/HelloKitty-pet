@@ -1,4 +1,5 @@
 import type { Motion } from "../dialogue/types";
+import { getMotionSpec } from "./proceduralMotion";
 
 export interface MotionConfig {
   src: string;
@@ -10,46 +11,33 @@ export interface MotionConfig {
 export const PET_FRAME_WIDTH = 240;
 export const PET_FRAME_HEIGHT = 240;
 
+/** 兜底 sprite sheet 配置：fps/loop/帧数直接来自 motion-spec.json */
+function sheetConfig(
+  src: string,
+  motion: Parameters<typeof getMotionSpec>[0],
+): MotionConfig {
+  const spec = getMotionSpec(motion);
+  return {
+    src,
+    frames: spec.keyframes.length,
+    fps: spec.fps,
+    loop: spec.loop,
+  };
+}
+
 export const motions: Record<Motion, MotionConfig> = {
-  idle: {
-    src: "/assets/pet/idle.png",
-    frames: 6,
-    fps: 6,
-    loop: true,
-  },
-  wave: {
-    src: "/assets/pet/happy.png",
-    frames: 6,
-    fps: 9,
-    loop: false,
-  },
-  shy: {
-    src: "/assets/pet/shy.png",
-    frames: 6,
-    fps: 8,
-    loop: false,
-  },
-  sleep: {
-    src: "/assets/pet/sleep.png",
-    frames: 4,
-    fps: 3,
-    loop: true,
-  },
-  happy: {
-    src: "/assets/pet/happy.png",
-    frames: 6,
-    fps: 9,
-    loop: false,
-  },
+  idle: sheetConfig("/assets/pet/idle.png", "idle"),
+  wave: sheetConfig("/assets/pet/happy.png", "happy"),
+  shy: sheetConfig("/assets/pet/shy.png", "shy"),
+  sleep: sheetConfig("/assets/pet/sleep.png", "sleep"),
+  happy: sheetConfig("/assets/pet/happy.png", "happy"),
 };
 
 /** 额外支持 sleepy 状态（使用独立素材），不属于对白 motion */
-export const sleepyMotion: MotionConfig = {
-  src: "/assets/pet/sleepy.png",
-  frames: 4,
-  fps: 3,
-  loop: true,
-};
+export const sleepyMotion: MotionConfig = sheetConfig(
+  "/assets/pet/sleepy.png",
+  "sleepy",
+);
 
 export type PetVisualMotion = Motion | "sleepy" | "clicked" | "dragging";
 
@@ -60,11 +48,6 @@ export const petMotions: Record<PetVisualMotion, MotionConfig> = {
   sleep: motions.sleep,
   happy: motions.happy,
   sleepy: sleepyMotion,
-  clicked: {
-    src: "/assets/pet/clicked.png",
-    frames: 4,
-    fps: 10,
-    loop: false,
-  },
+  clicked: sheetConfig("/assets/pet/clicked.png", "clicked"),
   dragging: motions.idle,
 };

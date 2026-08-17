@@ -1,0 +1,233 @@
+{
+  "frame": 240,
+  "highScale": 5,
+  "blink": {
+    "minIntervalMs": 2200,
+    "maxIntervalMs": 5800,
+    "holdMs": 140
+  },
+  "motions": {
+    "idle": {
+      "fps": 6,
+      "loop": true,
+      "blink": true,
+      "base": "open",
+      "ease": "sineInOut",
+      "keyframes": [
+        {
+          "scale": 1.0,
+          "scaleY": 1.0,
+          "angle": 0,
+          "dy": 0
+        },
+        {
+          "scale": 1.012,
+          "scaleY": 1.0,
+          "angle": 0,
+          "dy": -2
+        },
+        {
+          "scale": 1.01,
+          "scaleY": 1.01,
+          "angle": 0,
+          "dy": 0
+        },
+        {
+          "scale": 1.0,
+          "scaleY": 1.0,
+          "angle": 0,
+          "dy": 2
+        },
+        {
+          "scale": 0.99,
+          "scaleY": 1.0,
+          "angle": 0,
+          "dy": 0
+        },
+        {
+          "scale": 1.0,
+          "scaleY": 1.0,
+          "angle": 0,
+          "dy": -1
+        }
+      ]
+    },
+    "happy": {
+      "fps": 9,
+      "loop": false,
+      "blink": false,
+      "base": "happy",
+      "ease": "sineInOut",
+      "keyframes": [
+        {
+          "scale": 1.0,
+          "scaleY": 1.0,
+          "angle": 0,
+          "dy": 0
+        },
+        {
+          "scale": 1.04,
+          "scaleY": 1.04,
+          "angle": -3,
+          "dy": -14
+        },
+        {
+          "scale": 1.02,
+          "scaleY": 1.02,
+          "angle": 2,
+          "dy": -18
+        },
+        {
+          "scale": 1.0,
+          "scaleY": 0.96,
+          "angle": -2,
+          "dy": 2
+        },
+        {
+          "scale": 1.04,
+          "scaleY": 1.02,
+          "angle": 3,
+          "dy": -8
+        },
+        {
+          "scale": 1.0,
+          "scaleY": 1.0,
+          "angle": 0,
+          "dy": 0
+        }
+      ]
+    },
+    "shy": {
+      "fps": 8,
+      "loop": false,
+      "blink": false,
+      "base": "shy",
+      "ease": "sineInOut",
+      "keyframes": [
+        {
+          "scale": 0.96,
+          "scaleY": 0.96,
+          "angle": 0,
+          "dy": 0
+        },
+        {
+          "scale": 0.92,
+          "scaleY": 0.92,
+          "angle": -3,
+          "dy": 2
+        },
+        {
+          "scale": 0.93,
+          "scaleY": 0.94,
+          "angle": 0,
+          "dy": 1
+        },
+        {
+          "scale": 0.9,
+          "scaleY": 0.91,
+          "angle": 2,
+          "dy": 2
+        },
+        {
+          "scale": 0.94,
+          "scaleY": 0.94,
+          "angle": 0,
+          "dy": 0
+        },
+        {
+          "scale": 0.97,
+          "scaleY": 0.97,
+          "angle": 1,
+          "dy": 0
+        }
+      ]
+    },
+    "clicked": {
+      "fps": 10,
+      "loop": false,
+      "blink": false,
+      "base": "open",
+      "ease": "linear",
+      "keyframes": [
+        {
+          "scale": 1.08,
+          "scaleY": 0.9,
+          "angle": 0,
+          "dy": 4
+        },
+        {
+          "scale": 1.0,
+          "scaleY": 1.0,
+          "angle": 0,
+          "dy": 0
+        },
+        {
+          "scale": 1.05,
+          "scaleY": 0.94,
+          "angle": 0,
+          "dy": 2
+        },
+        {
+          "scale": 1.0,
+          "scaleY": 1.0,
+          "angle": 0,
+          "dy": 0
+        }
+      ]
+    },
+    "sleepy": {
+      "fps": 3,
+      "loop": true,
+      "blink": true,
+      "base": "half",
+      "ease": "sineInOut",
+      "keyframes": [
+        {
+          "scale": 1.0,
+          "scaleY": 1.0,
+          "angle": -2,
+          "dy": 1
+        },
+        {
+          "scale": 0.99,
+          "scaleY": 1.0,
+          "angle": -4,
+          "dy": 3
+        },
+        {
+          "scale": 1.0,
+          "scaleY": 0.99,
+          "angle": -2,
+          "dy": 4
+        },
+        {
+          "scale": 0.99,
+          "scaleY": 1.0,
+          "angle": 0,
+          "dy": 2
+        }
+      ]
+    },
+    "sleep": {
+      "fps": 3,
+      "loop": true,
+      "blink": false,
+      "base": "closed",
+      "ease": "linear",
+      "keyframes": [
+        {
+          "brightness": 0.82
+        },
+        {
+          "brightness": 0.75
+        },
+        {
+          "brightness": 0.78
+        },
+        {
+          "brightness": 0.75
+        }
+      ]
+    }
+  }
+}

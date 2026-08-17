@@ -24,8 +24,11 @@ body {
 
 .pet-root {
   position: relative;
-  width: 100%;
-  height: 100%;
+  /* 与 platform/window.ts 的 WINDOW_CSS_WIDTH/HEIGHT 保持一致；
+     缩放由 PetApp 的 transform: scale() 完成，根容器必须固定为设计尺寸，
+     否则窗口变大后 100% 布局会与 transform 叠加导致二次放大。 */
+  width: 300px;
+  height: 320px;
 }
 
 .pet-fatal {
@@ -53,6 +56,14 @@ body {
 
 .pet-drag-area:active {
   cursor: grabbing;
+}
+
+.procedural-pet {
+  display: block;
+  width: 240px;
+  height: 240px;
+  pointer-events: none;
+  -webkit-user-drag: none;
 }
 
 .pet-drag-area img,
@@ -195,6 +206,62 @@ body {
   flex-shrink: 0;
 }
 
+/* ---------- 设置面板：大小缩放 ---------- */
+.settings-scale {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.settings-scale-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.settings-scale-stepper {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.settings-scale-btn {
+  width: 26px;
+  height: 26px;
+  border: 1px solid #f0dbe5;
+  border-radius: 8px;
+  background: #fff;
+  color: #4a3b45;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+}
+
+.settings-scale-btn:hover:not(:disabled) {
+  background: #f6e8ee;
+}
+
+.settings-scale-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.settings-scale-value {
+  min-width: 42px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: #4a3b45;
+}
+
+.settings-slider {
+  width: 100%;
+  accent-color: #e887a8;
+}
+
 .settings-static {
   cursor: default;
 }
@@ -219,4 +286,125 @@ body {
   color: #b0a2aa;
   text-align: center;
   line-height: 1.5;
+}
+
+/* ---------- 开发期动作调参面板（Ctrl+Shift+D） ---------- */
+.motion-debug-panel {
+  position: absolute;
+  inset: 0;
+  z-index: 60;
+  background: rgba(255, 252, 253, 0.98);
+  border: 1px solid #f3a9c3;
+  border-radius: 12px;
+  padding: 10px;
+  box-sizing: border-box;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 11px;
+  color: #4a3b45;
+}
+
+.motion-debug-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.motion-debug-header strong {
+  display: block;
+  font-size: 13px;
+}
+
+.motion-debug-header small {
+  display: block;
+  color: #9a8b93;
+}
+
+.motion-debug-header button {
+  border: none;
+  background: transparent;
+  font-size: 14px;
+  cursor: pointer;
+  color: #8a7a82;
+  padding: 4px 8px;
+  border-radius: 8px;
+}
+
+.motion-debug-header button:hover {
+  background: #f6e8ee;
+}
+
+.motion-debug-row {
+  display: flex;
+  gap: 10px;
+}
+
+.motion-debug-field {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 10px;
+  color: #8a7b83;
+}
+
+.motion-debug-field input[type="number"],
+.motion-debug-field select {
+  width: 100%;
+  padding: 3px 4px;
+  border: 1px solid #f0dbe5;
+  border-radius: 6px;
+  background: #fff;
+  color: #4a3b45;
+  box-sizing: border-box;
+}
+
+.motion-debug-field input[type="range"] {
+  width: 100%;
+  accent-color: #e887a8;
+}
+
+.motion-debug-frames {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.motion-debug-frame {
+  display: grid;
+  grid-template-columns: 24px repeat(4, 1fr);
+  gap: 6px;
+  align-items: end;
+  background: #fff;
+  border: 1px solid #f0dbe5;
+  border-radius: 8px;
+  padding: 6px;
+}
+
+.motion-debug-frame-index {
+  font-weight: 700;
+  color: #c2809b;
+  align-self: center;
+}
+
+.motion-debug-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.motion-debug-actions button {
+  flex: 1;
+  border: 1px solid #f0dbe5;
+  background: #fff;
+  color: #c05777;
+  font-size: 11.5px;
+  padding: 7px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.motion-debug-actions button:hover {
+  background: #fde8ee;
 }
