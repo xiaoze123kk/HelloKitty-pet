@@ -26,6 +26,27 @@ export async function restorePosition(
     } catch (error) {
       console.error("restore position failed:", error);
     }
+  } else {
+    // 第一次运行：放在主显示器右下角（靠近托盘，更像桌宠）
+    try {
+      const monitors = await availableMonitors();
+      const primary = (await primaryMonitor().catch(() => null)) ?? monitors[0];
+      if (primary) {
+        const size = await appWindow.outerSize();
+        const x =
+          primary.position.x + primary.size.width - size.width - EDGE_MARGIN_X;
+        const y =
+          primary.position.y +
+          primary.size.height -
+          size.height -
+          EDGE_MARGIN_Y;
+        await appWindow.setPosition(
+          new PhysicalPosition(Math.round(x), Math.round(y)),
+        );
+      }
+    } catch (error) {
+      console.error("place default position failed:", error);
+    }
   }
   await clampToVisibleMonitors();
 }

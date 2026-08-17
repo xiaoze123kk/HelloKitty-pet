@@ -83,38 +83,38 @@ export const petMachine = setup({
     CLICK: [
       {
         guard: "isCrazyClick",
-        target: "shy",
+        target: "#pet.shy",
         actions: "recordClick",
       },
       {
         guard: "isRapidClick",
-        target: "shy",
+        target: "#pet.shy",
         actions: "recordClick",
       },
       {
         guard: "isDoubleClick",
-        target: "happy",
+        target: "#pet.happy",
         actions: "recordClick",
       },
       {
-        target: "clicked",
+        target: "#pet.clicked",
         actions: "recordClick",
       },
     ],
     SHOW_DIALOGUE: [
       {
         guard: "dialogueMovesHappy",
-        target: "happy",
+        target: "#pet.happy",
         actions: "setDialogue",
       },
       {
         guard: "dialogueMovesShy",
-        target: "shy",
+        target: "#pet.shy",
         actions: "setDialogue",
       },
       {
         guard: "dialogueMovesSleep",
-        target: "sleeping",
+        target: "#pet.sleeping",
         actions: "setDialogue",
       },
       {
@@ -126,7 +126,7 @@ export const petMachine = setup({
       actions: "clearDialogue",
     },
     WAKE: {
-      target: "idle",
+      target: "#pet.idle",
     },
   },
   states: {

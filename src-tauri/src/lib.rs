@@ -16,11 +16,18 @@ fn toggle_main_window(app: &tauri::AppHandle) {
     }
 }
 
+/// 前端错误诊断通道：只打印到本机终端，不发往任何外部服务。
+#[tauri::command]
+fn log_frontend(message: String) {
+    println!("[frontend] {message}");
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_autostart::Builder::new().build())
         .plugin(tauri_plugin_store::Builder::new().build())
+        .invoke_handler(tauri::generate_handler![log_frontend])
         .setup(|app| {
             let toggle = MenuItem::with_id(app, "toggle", "显示 / 隐藏", true, None::<&str>)?;
             let pause = MenuItem::with_id(app, "pause", "暂停互动", true, None::<&str>)?;

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { UnlistenFn } from "@tauri-apps/api/event";
 import { listen } from "@tauri-apps/api/event";
+import { invoke } from "@tauri-apps/api/core";
 import {
   disable as autostartDisable,
   enable as autostartEnable,
@@ -56,6 +57,8 @@ export interface PetController {
   alwaysOnTop: boolean;
   autostart: boolean;
   autostartSupported: boolean;
+  /** 初始化或渲染期致命错误（用于在透明窗口里显示出来，避免"隐形窗口"） */
+  fatal: string | null;
   openSettings: () => void;
   closeSettings: () => void;
   onPetClick: () => void;
@@ -85,6 +88,7 @@ export function usePetController(): PetController {
   const [alwaysOnTop, setAlwaysOnTop] = useState(true);
   const [autostart, setAutostart] = useState(false);
   const [autostartSupported, setAutostartSupported] = useState(false);
+  const [fatal, setFatal] = useState<string | null>(null);
 
   const prefsStoreRef = useRef<PrefStore | null>(null);
   const progressStoreRef = useRef<ProgressStore | null>(null);
@@ -213,11 +217,12 @@ export function usePetController(): PetController {
     let tickTimer: number | undefined;
 
     async function init(): Promise<void> {
-      const [prefsLoaded, progressLoaded] = await Promise.all([
-        loadPreferences(),
-        loadProgress(),
-      ]);
-      if (disposed) return;
+      try {
+        const [prefsLoaded, progressLoaded] = await Promise.all([
+          loadPreferences(),
+          loadProgress(),
+        ]);
+        if (disposed) return;
 
       prefsStoreRef.current = prefsLoaded.store;
       prefsRef.current = prefsLoaded.prefs;
@@ -313,6 +318,19 @@ export function usePetController(): PetController {
         }
         void saveProgress(progressStoreRef.current, current);
       }, TICK_INTERVAL_MS);
+      } catch (error) {
+        console.error("controller init failed:", error);
+        if (!disposed) {
+          const message =
+            error instanceof Error
+              ? `${error.message}\n${error.stack ?? ""}`
+              : String(error);
+          setFatal(message);
+          void invoke("log_frontend", {
+            message: `[init] ${message}`,
+          }).catch(() => undefined);
+        }
+      }
     }
 
     void init();
@@ -435,6 +453,7 @@ export function usePetController(): PetController {
     alwaysOnTop,
     autostart,
     autostartSupported,
+    fatal,
     openSettings: () => setSettingsOpen(true),
     closeSettings: () => setSettingsOpen(false),
     onPetClick,

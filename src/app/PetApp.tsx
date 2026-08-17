@@ -7,6 +7,15 @@ import { usePetController } from "./usePetController";
 export function PetApp() {
   const controller = usePetController();
 
+  if (controller.fatal) {
+    return (
+      <div className="pet-fatal">
+        <strong>桌宠初始化出错</strong>
+        <pre>{controller.fatal}</pre>
+      </div>
+    );
+  }
+
   return (
     <div className="pet-root">
       <SpeechBubble

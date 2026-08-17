@@ -28,6 +28,19 @@ body {
   height: 100%;
 }
 
+.pet-fatal {
+  position: absolute;
+  inset: 0;
+  background: #fff;
+  color: #c0392b;
+  font-size: 12px;
+  padding: 14px;
+  box-sizing: border-box;
+  overflow: auto;
+  white-space: pre-wrap;
+  z-index: 100;
+}
+
 /* ---------- 拖拽区域 ---------- */
 .pet-drag-area {
   position: absolute;

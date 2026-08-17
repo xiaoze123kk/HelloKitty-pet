@@ -25,8 +25,11 @@ export default defineConfig(async () => ({
         }
       : undefined,
     watch: {
-      // 3. tell Vite to ignore watching `src-tauri`
-      ignored: ["**/src-tauri/**"],
+      // 3. tell Vite to ignore watching `src-tauri`；Windows 上用轮询避开
+      // 编辑器原子写入 .tmpdir 与 FSWatcher 的 EBUSY 竞争
+      ignored: ["**/src-tauri/**", "**/*.tmpdir/**", "**/.*.tmpdir/**"],
+      usePolling: true,
+      interval: 300,
     },
   },
 }));
