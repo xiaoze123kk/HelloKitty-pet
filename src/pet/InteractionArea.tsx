@@ -1,23 +1,35 @@
 import { useEffect, useRef, type PointerEvent, type ReactNode } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 
+const appWindow = getCurrentWindow();
+
+import { classifyTouchPart, type PetTouchPart } from "./touchZones";
+
 interface InteractionAreaProps {
   children: ReactNode;
   disabled?: boolean;
-  onClick: () => void;
+  /** 普通点击（未触发长按/拖拽），附带点击部位 */
+  onClick: (part: PetTouchPart) => void;
   onDragStart: () => void;
   onDragEnd: () => void;
   onOpenSettings: () => void;
   /** Ctrl+滚轮缩放（deltaY < 0 放大，> 0 缩小） */
   onWheelZoom?: (deltaY: number) => void;
+  /** 按住超过阈值未移动：开始撸猫 */
+  onHoldStart?: () => void;
+  /** 撸猫松手 / 被拖拽打断：结束撸猫 */
+  onHoldEnd?: () => void;
 }
 
 const DRAG_THRESHOLD_PX = 6;
 const DRAG_END_QUIET_MS = 700;
+const HOLD_THRESHOLD_MS = 650;
 
 /**
  * 点击 / 拖拽二合一区域：
- * - 按住并移动超过阈值 → 交给系统原生窗口拖拽（data-tauri-drag-region）
+ * - 按住并移动超过阈值 → 显式调用 Tauri startDragging() 开始原生窗口拖拽
+ * - 不使用 data-tauri-drag-region：Tauri 注入脚本会在每次 mousedown
+ *   直接开始拖拽 / 双击最大化，连点会被系统手势吞掉
  * - 按下后未移动就松开 → CLICK
  * - 原生拖拽可能吞掉 mouseup，用 onMoved + 静默计时器兜底发 DRAG_END
  * - 右键 → 打开设置
@@ -30,10 +42,14 @@ export function InteractionArea({
   onDragEnd,
   onOpenSettings,
   onWheelZoom,
+  onHoldStart,
+  onHoldEnd,
 }: InteractionAreaProps) {
   const areaRef = useRef<HTMLDivElement | null>(null);
   const downRef = useRef<{ x: number; y: number; time: number } | null>(null);
   const draggingRef = useRef(false);
+  const holdingRef = useRef(false);
+  const holdTimerRef = useRef<number | null>(null);
   const lastMovedAtRef = useRef(0);
   const startedByMoveRef = useRef(false);
 
@@ -41,11 +57,15 @@ export function InteractionArea({
   const onDragStartRef = useRef(onDragStart);
   const onDragEndRef = useRef(onDragEnd);
   const onWheelZoomRef = useRef(onWheelZoom);
+  const onHoldStartRef = useRef(onHoldStart);
+  const onHoldEndRef = useRef(onHoldEnd);
   const disabledRef = useRef(disabled);
   onClickRef.current = onClick;
   onDragStartRef.current = onDragStart;
   onDragEndRef.current = onDragEnd;
   onWheelZoomRef.current = onWheelZoom;
+  onHoldStartRef.current = onHoldStart;
+  onHoldEndRef.current = onHoldEnd;
   disabledRef.current = disabled;
 
   useEffect(() => {
@@ -67,13 +87,16 @@ export function InteractionArea({
   }, []);
 
   useEffect(() => {
-    const appWindow = getCurrentWindow();
     let unlistenMoved: (() => void) | undefined;
     let disposed = false;
-
     appWindow.onMoved(() => {
       lastMovedAtRef.current = Date.now();
       if (downRef.current && !draggingRef.current) {
+        // 原生拖拽开始：打断可能已触发的长按撸猫
+        if (holdingRef.current) {
+          holdingRef.current = false;
+          onHoldEndRef.current?.();
+        }
         draggingRef.current = true;
         startedByMoveRef.current = true;
         onDragStartRef.current();
@@ -102,6 +125,10 @@ export function InteractionArea({
       disposed = true;
       unlistenMoved?.();
       window.clearInterval(timer);
+      if (holdTimerRef.current !== null) {
+        window.clearTimeout(holdTimerRef.current);
+        holdTimerRef.current = null;
+      }
     };
   }, []);
 
@@ -111,6 +138,16 @@ export function InteractionArea({
     downRef.current = { x: event.clientX, y: event.clientY, time: Date.now() };
     draggingRef.current = false;
     startedByMoveRef.current = false;
+    if (holdTimerRef.current !== null) {
+      window.clearTimeout(holdTimerRef.current);
+    }
+    holdTimerRef.current = window.setTimeout(() => {
+      holdTimerRef.current = null;
+      if (downRef.current && !draggingRef.current) {
+        holdingRef.current = true;
+        onHoldStartRef.current?.();
+      }
+    }, HOLD_THRESHOLD_MS);
   }
 
   function handlePointerMove(event: PointerEvent<HTMLDivElement>) {
@@ -119,17 +156,39 @@ export function InteractionArea({
     const dx = event.clientX - down.x;
     const dy = event.clientY - down.y;
     if (dx * dx + dy * dy >= DRAG_THRESHOLD_PX * DRAG_THRESHOLD_PX) {
+      if (holdTimerRef.current !== null) {
+        window.clearTimeout(holdTimerRef.current);
+        holdTimerRef.current = null;
+      }
+      if (holdingRef.current) {
+        holdingRef.current = false;
+        onHoldEndRef.current?.();
+      }
       draggingRef.current = true;
       startedByMoveRef.current = true;
       lastMovedAtRef.current = Date.now();
       onDragStartRef.current();
-      // 之后由 data-tauri-drag-region 的原生拖拽接管
+      // 只在真实发生移动时才交给系统拖拽，连点不会被 mousedown 手势干扰
+      void appWindow.startDragging().catch((error) => {
+        console.error("start dragging failed:", error);
+      });
     }
   }
 
   function handlePointerUp(event: PointerEvent<HTMLDivElement>) {
     if (event.button !== 0) return;
     if (disabled) return;
+    if (holdTimerRef.current !== null) {
+      window.clearTimeout(holdTimerRef.current);
+      holdTimerRef.current = null;
+    }
+    if (holdingRef.current) {
+      // 长按结束：只结束撸猫，不触发普通点击
+      holdingRef.current = false;
+      downRef.current = null;
+      onHoldEndRef.current?.();
+      return;
+    }
     if (draggingRef.current || startedByMoveRef.current) {
       draggingRef.current = false;
       downRef.current = null;
@@ -137,10 +196,28 @@ export function InteractionArea({
       return;
     }
     downRef.current = null;
-    onClickRef.current();
+    const rect = areaRef.current?.getBoundingClientRect();
+    const part =
+      rect && rect.width > 0 && rect.height > 0
+        ? classifyTouchPart(
+            ((event.clientX - rect.left) / rect.width) * 240,
+            ((event.clientY - rect.top) / rect.height) * 240,
+          )
+        : "head";
+    onClickRef.current(part);
   }
 
   function handlePointerCancel() {
+    if (holdTimerRef.current !== null) {
+      window.clearTimeout(holdTimerRef.current);
+      holdTimerRef.current = null;
+    }
+    if (holdingRef.current) {
+      holdingRef.current = false;
+      downRef.current = null;
+      onHoldEndRef.current?.();
+      return;
+    }
     if (draggingRef.current) {
       draggingRef.current = false;
       downRef.current = null;
@@ -159,7 +236,6 @@ export function InteractionArea({
     <div
       ref={areaRef}
       className="pet-drag-area"
-      data-tauri-drag-region
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}

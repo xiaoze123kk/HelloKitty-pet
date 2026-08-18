@@ -160,7 +160,8 @@ function matchesTrigger(entry: DialogueEntry, ctx: TriggerContext): boolean {
     case "timeRange":
       return t.rangeKey === ctx.rangeKey;
     case "rapidClick":
-      return ctx.count >= (t.minClicks ?? 5);
+      // 与 petMachine 的 RAPID_CLICK_THRESHOLD 保持一致
+      return ctx.count >= (t.minClicks ?? 4);
     case "sessionDuration":
       return ctx.minutes >= (t.minutes ?? Number.POSITIVE_INFINITY);
     case "specialDate":

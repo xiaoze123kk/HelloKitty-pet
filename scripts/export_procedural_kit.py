@@ -4,9 +4,9 @@
 输出（public/ 与 src/ 各一份）:
   cutout-frame@5x.png        1200x1200 睁眼基准帧
   cutout-frame-blink@5x.png  闭眼帧（自动检测眼睛位置）
-  cutout-frame-half@5x.png   半闭困倦眼
+  cutout-frame-half@5x.png   半闭困倦眼（下弯上眼睑弧线）
   cutout-frame-happy@5x.png  下弯笑眼
-  cutout-frame-shy@5x.png    半闭眼 + 腮红
+  cutout-frame-shy@5x.png    下弯闭眼笑弧 + 腮红
   motion-spec.json           动作/表情/缓动定义（src/assets/pet/）
 
 用法:
@@ -48,6 +48,41 @@ EXPRESSION_FILES = {
     "happy": "cutout-frame-happy@5x.png",
     "shy": "cutout-frame-shy@5x.png",
 }
+
+# 使用 assets/ 投放区整身立绘作为 Canvas 高清基帧的动作。
+# 与 apply_pet_asset.POSE_SOURCES 保持一致；一个立绘可复用于多个动作。
+POSE_STATE_BASES = {
+    "happy": "happy.png.png",
+    "shy": "shy.png.png",
+    "dragging": "drag.png.png",
+    "fallAsleep": "sleep.png.png",
+    "wake": "sleep.png.png",
+    "sleep": "sleep.png.png",
+    "angry": "angry.png.png",
+}
+
+
+def write_pose_state_bases():
+    """把 assets/ 里的姿势立绘导出成 state-bases/{state}.png（1200px 高清基帧）。"""
+    cache = {}
+    for state, filename in POSE_STATE_BASES.items():
+        if filename not in cache:
+            path = ROOT / "assets" / filename
+            if not path.exists():
+                raise SystemExit(
+                    f"动作 {state} 需要立绘 {filename}，但 assets/ 里找不到。\n"
+                    "请把对应姿势的整身立绘放进 assets/ 后再运行本脚本。"
+                )
+            im = Image.open(path).convert("RGB")
+            cut = A.segment_with_rembg(im) or A.segment_with_flood(im)
+            cache[filename] = A.fit_canvas(cut, size=HIGH_SIZE)
+            print(f"pose hi-res: {state} <- {filename}")
+        for out_dir in OUTPUT_DIRS:
+            out = out_dir / "state-bases"
+            out.mkdir(parents=True, exist_ok=True)
+            out_path = out / f"{state}.png"
+            cache[filename].save(out_path)
+            print(f"written: {out_path}")
 
 
 def is_dark(pixel):
@@ -156,7 +191,8 @@ def eye_colors(base, cx, cy, cw, ch):
     )
     fur = sample_color(base, bbox240, exclude_dark=True)
     dark = sample_color(base, bbox240, dark_only=True)
-    line = tuple(round(f + (d - f) * 0.5) for f, d in zip(fur, dark))
+    # 眼线要足够深：缩小到 240px 显示后依然清晰可辨（旧版 50% 混合太浅）
+    line = tuple(round(f * 0.15 + d * 0.85) for f, d in zip(fur, dark))
     return fur, line
 
 
@@ -179,16 +215,45 @@ def make_expression(base, base_hi, eyes, mode):
         fur, line = eye_colors(base, cx, cy, cw, ch)
         px_cx, px_cy = cx * s, cy * s
 
-        if mode in ("half", "shy"):
-            # 上眼皮盖住上半部分，留出下半条眼睛
+        if mode == "half":
+            # 困倦：上眼皮盖住约三分之二，只留底部一窄条；
+            # 用深色下弯眼皮线压住残余眼睛
             draw.ellipse(
                 [px_cx - rx, px_cy - ry * 1.15, px_cx + rx, px_cy + ry * 0.35],
                 fill=fur + (255,),
             )
-            draw.line(
-                [px_cx - rx * 0.98, px_cy + ry * 0.02, px_cx + rx * 0.98, px_cy + ry * 0.02],
+            lid_y = px_cy + ry * 0.22
+            sag = ry * 0.24
+            draw.arc(
+                [
+                    px_cx - rx * 0.98,
+                    lid_y - sag,
+                    px_cx + rx * 0.98,
+                    lid_y + sag,
+                ],
+                start=0,
+                end=180,
                 fill=line + (255,),
-                width=max(2, round(3.4 * s)),
+                width=max(3, round(5.2 * s)),
+            )
+        elif mode == "shy":
+            # 害羞：完全盖住原眼，画一条干净的下弯闭眼弧线
+            draw.ellipse(
+                [px_cx - rx, px_cy - ry, px_cx + rx, px_cy + ry],
+                fill=fur + (255,),
+            )
+            arc_box = [
+                px_cx - rx * 0.95,
+                px_cy - ry * 0.58,
+                px_cx + rx * 0.95,
+                px_cy + ry * 0.58,
+            ]
+            draw.arc(
+                arc_box,
+                start=0,
+                end=180,
+                fill=line + (255,),
+                width=max(3, round(4.4 * s)),
             )
         else:
             # closed / happy：先完全盖住眼睛，再画下弯眼线
@@ -198,14 +263,14 @@ def make_expression(base, base_hi, eyes, mode):
             )
             arc_box = [
                 px_cx - rx * 0.98,
-                px_cy - ry * 0.62,
+                px_cy - ry * 0.72,
                 px_cx + rx * 0.98,
-                px_cy + ry * 0.62,
+                px_cy + ry * 0.72,
             ]
             if mode == "closed":
-                draw.arc(arc_box, start=0, end=180, fill=line + (255,), width=max(2, round(3.2 * s)))
+                draw.arc(arc_box, start=0, end=180, fill=line + (255,), width=max(3, round(5.0 * s)))
             else:  # happy：更粗、更上扬的笑眼弧线
-                draw.arc(arc_box, start=15, end=165, fill=line + (255,), width=max(2, round(5.4 * s)))
+                draw.arc(arc_box, start=15, end=165, fill=line + (255,), width=max(3, round(6.0 * s)))
 
     if mode == "shy":
         blush = Image.new("RGBA", work.size, (0, 0, 0, 0))
@@ -231,7 +296,14 @@ def make_expression(base, base_hi, eyes, mode):
 
 def keyframe_to_dict(item):
     if item[0] == "dim":
-        return {"brightness": item[1]}
+        # ("dim", brightness, scale, scaleY, angle, dy)
+        return {
+            "brightness": item[1],
+            "scale": item[2],
+            "scaleY": item[3],
+            "angle": item[4],
+            "dy": item[5],
+        }
     scale, sy, angle, dy = item
     return {"scale": scale, "scaleY": sy, "angle": angle, "dy": dy}
 
@@ -269,12 +341,23 @@ def main():
 
     eyes = detect_eyes(base)
     print(f"eyes detected: {eyes}")
+    if not eyes:
+        raise SystemExit(
+            "未能检测到眼睛：无法生成 closed/half/happy/shy 表情帧。\n"
+            "请检查输入立绘（眼睛需为深色、位于画面中上部），或改用可检测到眼睛的素材；\n"
+            "不要跳过此步骤，否则后续生成的 sleep/fallAsleep 等动作会退回睁眼基帧。"
+        )
 
     expressions = {}
     for mode in EXPRESSION_FILES:
         frame = make_expression(base, base_hi, eyes, mode)
-        if frame:
-            expressions[mode] = frame
+        if frame is None:
+            raise SystemExit(
+                f"表情帧 {EXPRESSION_FILES[mode]}（{mode}）生成失败。\n"
+                "为避免新表情与旧素材混用造成'睡眠睁眼'，本次导出中止，"
+                "现有素材保持不变。"
+            )
+        expressions[mode] = frame
 
     for out_dir in OUTPUT_DIRS:
         out_dir.mkdir(parents=True, exist_ok=True)
@@ -282,6 +365,8 @@ def main():
             path = out_dir / EXPRESSION_FILES[mode]
             frame.save(path)
             print(f"written: {path}")
+
+    write_pose_state_bases()
 
     SPEC_PATH.parent.mkdir(parents=True, exist_ok=True)
     spec = build_motion_spec()

@@ -3,12 +3,55 @@ import {
   availableMonitors,
   getCurrentWindow,
   primaryMonitor,
+  type Monitor,
 } from "@tauri-apps/api/window";
 import { clampScale, DEFAULT_SCALE } from "../pet/zoom";
 import type { PetPreferences, PrefStore } from "../storage/preferences";
 
 const EDGE_MARGIN_X = 24;
 const EDGE_MARGIN_Y = 56;
+
+/** 散步/追逐每 40ms 移动一步，显示器信息不需要每次都走 IPC */
+const MONITOR_CACHE_TTL_MS = 2_000;
+
+interface MonitorCacheEntry {
+  at: number;
+  monitors: Monitor[];
+}
+
+let monitorCache: MonitorCacheEntry | null = null;
+
+async function getMonitorsCached(): Promise<Monitor[]> {
+  const now = Date.now();
+  if (monitorCache && now - monitorCache.at < MONITOR_CACHE_TTL_MS) {
+    return monitorCache.monitors;
+  }
+  try {
+    const monitors = await availableMonitors();
+    monitorCache = { at: now, monitors };
+    return monitors;
+  } catch (error) {
+    console.error("query monitors failed:", error);
+    return monitorCache?.monitors ?? [];
+  }
+}
+
+function findMonitorAt(
+  monitors: Monitor[],
+  x: number,
+  y: number,
+): Monitor | undefined {
+  return monitors.find((monitor) => {
+    const left = monitor.position.x;
+    const top = monitor.position.y;
+    return (
+      x >= left &&
+      x <= left + monitor.size.width &&
+      y >= top &&
+      y <= top + monitor.size.height
+    );
+  });
+}
 
 /** 布局按 300x320 CSS 像素设计 */
 export const WINDOW_CSS_WIDTH = 300;
@@ -82,7 +125,7 @@ export async function setWindowScale(scale: number): Promise<void> {
  * 与 restorePosition 的 clampToVisibleMonitors 不同：这里保证"整窗可见"，
  * 避免放大后桌宠被切掉一半。
  */
-async function keepWindowOnScreen(): Promise<void> {
+export async function keepWindowOnScreen(): Promise<void> {
   try {
     const monitors = await availableMonitors();
     if (monitors.length === 0) return;
@@ -126,6 +169,122 @@ async function keepWindowOnScreen(): Promise<void> {
     }
   } catch (error) {
     console.error("keep window on screen failed:", error);
+  }
+}
+
+/** 散步模式每步移动的物理像素（40ms 一步，约 75px/s @100% DPI） */
+const WALK_STEP_PX = 3;
+
+/**
+ * 散步模式沿水平方向移动一步；碰到所在显示器的左右边界自动折返。
+ * 返回新的方向（1 = 向右，-1 = 向左），调用方负责保存。
+ */
+export async function walkStep(direction: 1 | -1): Promise<1 | -1> {
+  try {
+    const monitors = await getMonitorsCached();
+    if (monitors.length === 0) return direction;
+
+    const [pos, size] = await Promise.all([
+      appWindow.outerPosition(),
+      appWindow.outerSize(),
+    ]);
+    const centerX = pos.x + size.width / 2;
+    const centerY = pos.y + size.height / 2;
+
+    const monitor =
+      findMonitorAt(monitors, centerX, centerY) ??
+      (await primaryMonitor().catch(() => null)) ??
+      monitors[0];
+
+    const minX = monitor.position.x;
+    const maxX = Math.max(minX, monitor.position.x + monitor.size.width - size.width);
+
+    let nextDirection = direction;
+    let x = pos.x + direction * WALK_STEP_PX;
+    if (x <= minX) {
+      x = minX;
+      nextDirection = 1;
+    } else if (x >= maxX) {
+      x = maxX;
+      nextDirection = -1;
+    }
+
+    await appWindow.setPosition(new PhysicalPosition(Math.round(x), pos.y));
+    return nextDirection;
+  } catch (error) {
+    console.error("walk step failed:", error);
+    return direction;
+  }
+}
+
+/** 追逐模式每步最大 / 最小移动量（CSS 像素，40ms 一步：最高约 200px/s） */
+const CHASE_MAX_STEP_CSS_PX = 8;
+const CHASE_MIN_STEP_CSS_PX = 2;
+
+/**
+ * 追逐模式朝目标点移动一步（水平 + 垂直）。
+ * 步长随距离衰减：离得远每步走满 8 CSS px，靠近时变小，
+ * 到达后不再抖动；移动范围钳制在窗口所在显示器内。
+ */
+export async function chaseStep(
+  targetX: number,
+  targetY: number,
+): Promise<{ dx: number; dy: number; distance: number; arrived: boolean }> {
+  const zero = { dx: 0, dy: 0, distance: 0, arrived: false };
+  try {
+    const monitors = await getMonitorsCached();
+    if (monitors.length === 0) return zero;
+
+    const [pos, size] = await Promise.all([
+      appWindow.outerPosition(),
+      appWindow.outerSize(),
+    ]);
+    const centerX = pos.x + size.width / 2;
+    const centerY = pos.y + size.height / 2;
+    const distance = Math.hypot(targetX - centerX, targetY - centerY);
+
+    // 用视口 DPI 归一化：不同缩放 / DPI 屏幕上追逐手感一致
+    const dpr = window.devicePixelRatio || 1;
+    const dxCss = (targetX - centerX) / dpr;
+    const dyCss = (targetY - centerY) / dpr;
+    const distanceCss = Math.hypot(dxCss, dyCss);
+    if (distanceCss < 0.5) return { ...zero, distance, arrived: true };
+
+    const arrived = distanceCss <= CHASE_MAX_STEP_CSS_PX;
+    const stepCss = Math.min(
+      CHASE_MAX_STEP_CSS_PX,
+      Math.max(CHASE_MIN_STEP_CSS_PX, distanceCss * 0.22),
+    );
+    const travelCss = arrived ? distanceCss : stepCss;
+    const nextCenterX = centerX + (dxCss / distanceCss) * travelCss * dpr;
+    const nextCenterY = centerY + (dyCss / distanceCss) * travelCss * dpr;
+
+    const monitor =
+      findMonitorAt(monitors, centerX, centerY) ??
+      (await primaryMonitor().catch(() => null)) ??
+      monitors[0];
+    const minX = monitor.position.x;
+    const maxX = Math.max(
+      minX,
+      monitor.position.x + monitor.size.width - size.width,
+    );
+    const minY = monitor.position.y;
+    const maxY = Math.max(
+      minY,
+      monitor.position.y + monitor.size.height - size.height,
+    );
+
+    const x = Math.min(Math.max(nextCenterX - size.width / 2, minX), maxX);
+    const y = Math.min(Math.max(nextCenterY - size.height / 2, minY), maxY);
+    if (x !== pos.x || y !== pos.y) {
+      await appWindow.setPosition(
+        new PhysicalPosition(Math.round(x), Math.round(y)),
+      );
+    }
+    return { dx: x - pos.x, dy: y - pos.y, distance, arrived };
+  } catch (error) {
+    console.error("chase step failed:", error);
+    return zero;
   }
 }
 

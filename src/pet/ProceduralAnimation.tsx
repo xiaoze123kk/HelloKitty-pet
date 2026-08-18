@@ -26,6 +26,8 @@ interface ProceduralAnimationProps {
   zoom: number;
   /** 非循环动画播完最后一帧时回调（保持状态机契约） */
   onFinished?: () => void;
+  /** 视线跟随：整个身体朝鼠标方向轻微转头/倾斜 */
+  gazeFollow?: boolean;
 }
 
 const imageCache = new Map<string, Promise<HTMLImageElement>>();
@@ -104,14 +106,22 @@ export function ProceduralAnimation({
   motion,
   zoom,
   onFinished,
+  gazeFollow = false,
 }: ProceduralAnimationProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const baseImageRef = useRef<HTMLImageElement | null>(null);
   const blinkImageRef = useRef<HTMLImageElement | null>(null);
-  const loadedSpecKeyRef = useRef<string | null>(null);
-  const [ready, setReady] = useState(false);
+  /**
+   * 已加载完成的动作名（不是布尔值）：
+   * 动作切换时先置 null，再置为新 specKey。即使 React 把两次 setState
+   * 合并为同一次渲染，null→specKey 也必然产生状态变化，避免
+   * “ZZZ 已显示但 canvas 仍停留在上一个动作画面”的陈旧帧问题。
+   */
+  const [loadedSpecKey, setLoadedSpecKey] = useState<string | null>(null);
   const [blinkReady, setBlinkReady] = useState(false);
   const [specRevision, setSpecRevision] = useState(0);
+
+  const ready = loadedSpecKey === getSpecKey(motion);
 
   const motionRef = useRef(motion);
   const zoomRef = useRef(zoom);
@@ -120,6 +130,38 @@ export function ProceduralAnimation({
   motionRef.current = motion;
   zoomRef.current = zoom;
   onFinishedRef.current = onFinished;
+
+  // 视线跟随：用 CSS transform 微调画布，不触发重绘
+  useEffect(() => {
+    if (!gazeFollow || !ready) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const reset = () => {
+      canvas.style.transform = "";
+    };
+    const apply = (clientX: number, clientY: number) => {
+      const nx = clientX / window.innerWidth - 0.5;
+      const ny = clientY / window.innerHeight - 0.5;
+      canvas.style.transition = "transform 0.18s ease-out";
+      canvas.style.transformOrigin = "center 72%";
+      canvas.style.transform = `rotate(${(nx * 6).toFixed(2)}deg) translate(${(nx * 5).toFixed(1)}px, ${(ny * 2.5).toFixed(1)}px)`;
+    };
+    const onMove = (event: globalThis.PointerEvent) => {
+      apply(event.clientX, event.clientY);
+    };
+    const onOut = (event: globalThis.PointerEvent) => {
+      if (!event.relatedTarget) reset();
+    };
+
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerout", onOut);
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerout", onOut);
+      reset();
+    };
+  }, [gazeFollow, ready]);
 
   const drawPose = (keyframe: MotionKeyframe) => {
     const canvas = canvasRef.current;
@@ -156,7 +198,7 @@ export function ProceduralAnimation({
   // ---------- 按动作加载基帧；失败时退回 sprite sheet ----------
   useEffect(() => {
     let disposed = false;
-    setReady(false);
+    setLoadedSpecKey(null);
     setBlinkReady(false);
     baseImageRef.current = null;
     blinkImageRef.current = null;
@@ -170,8 +212,7 @@ export function ProceduralAnimation({
       blinkImageRef.current = blink;
       setBlinkReady(blink !== null);
       if (!base) return;
-      loadedSpecKeyRef.current = specKey;
-      setReady(true);
+      setLoadedSpecKey(specKey);
     });
 
     return () => {
@@ -190,7 +231,7 @@ export function ProceduralAnimation({
 
   // ---------- 时间轴 + 缓动插值推进 ----------
   useEffect(() => {
-    if (!ready || loadedSpecKeyRef.current !== getSpecKey(motion)) return;
+    if (loadedSpecKey !== getSpecKey(motion)) return;
 
     const spec = getMotionSpec(motion);
     let raf = 0;
@@ -246,11 +287,11 @@ export function ProceduralAnimation({
       blinkUntilRef.current = 0;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [motion, ready, specRevision]);
+  }, [motion, loadedSpecKey, specRevision]);
 
   // ---------- 随机眨眼调度 ----------
   useEffect(() => {
-    if (!ready || !blinkReady) return;
+    if (loadedSpecKey !== getSpecKey(motion) || !blinkReady) return;
     const spec = getMotionSpec(motion);
     blinkUntilRef.current = 0;
     if (!spec.blink || !blinkImageRef.current) return;
@@ -282,11 +323,11 @@ export function ProceduralAnimation({
       blinkUntilRef.current = 0;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [motion, ready, blinkReady, specRevision]);
+  }, [motion, loadedSpecKey, blinkReady, specRevision]);
 
   // ---------- 缩放 / DPI 变化时重建背板 ----------
   useEffect(() => {
-    if (!ready) return;
+    if (loadedSpecKey !== getSpecKey(motion)) return;
 
     const resizeAndDraw = () => {
       const canvas = canvasRef.current;
@@ -310,7 +351,7 @@ export function ProceduralAnimation({
       window.removeEventListener("resize", resizeAndDraw);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [zoom, ready]);
+  }, [zoom, loadedSpecKey]);
 
   if (!ready) {
     return (

@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
+import { Hearts } from "../components/Hearts";
 import { MotionDebugPanel } from "../components/MotionDebugPanel";
 import { SettingsPanel } from "../components/SettingsPanel";
+import { SleepZzz } from "../components/SleepZzz";
 import { SpeechBubble } from "../components/SpeechBubble";
 import { InteractionArea } from "../pet/InteractionArea";
 import { ProceduralAnimation } from "../pet/ProceduralAnimation";
@@ -58,6 +60,10 @@ export function PetApp() {
         followUp={controller.followUp}
       />
 
+      <SleepZzz motion={controller.motion} />
+
+      <Hearts active={controller.hearts} />
+
       <InteractionArea
         disabled={controller.settingsOpen || debugOpen}
         onClick={controller.onPetClick}
@@ -65,11 +71,16 @@ export function PetApp() {
         onDragEnd={controller.onPetDragEnd}
         onOpenSettings={controller.openSettings}
         onWheelZoom={controller.onWheelZoom}
+        onHoldStart={controller.onHoldStart}
+        onHoldEnd={controller.onHoldEnd}
       >
         <ProceduralAnimation
           motion={controller.motion}
           zoom={controller.scale}
           onFinished={controller.onAnimationFinished}
+          gazeFollow={
+            controller.animationPrefs.gazeFollow && !controller.settingsOpen
+          }
         />
       </InteractionArea>
 
@@ -80,11 +91,15 @@ export function PetApp() {
         autostart={controller.autostart}
         autostartSupported={controller.autostartSupported}
         scale={controller.scale}
+        animations={controller.animationPrefs}
+        reminders={controller.reminderPrefs}
         onScaleChange={controller.onScaleChange}
         onClose={controller.closeSettings}
         onToggleAlwaysOnTop={controller.toggleAlwaysOnTop}
         onToggleDnd={controller.toggleDnd}
         onToggleAutostart={controller.toggleAutostart}
+        onToggleAnimation={controller.toggleAnimation}
+        onUpdateReminder={controller.updateReminder}
         onClearData={controller.clearData}
       />
 

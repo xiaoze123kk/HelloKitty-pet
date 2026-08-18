@@ -1,7 +1,9 @@
 # KittyPet
 
 一个私人的 Windows 桌面宠物。透明无边框、可拖拽、可点击互动、可缩放（50%–200%），
-会按时间/使用时长/纪念日主动说话，完全离线运行，不上传任何数据。
+会按时间/使用时长/纪念日主动说话，带随机小动作、入睡/起床、撸猫爱心、视线跟随、桌面散步
+等趣味动画，摸蝴蝶结/头/身体会有不同反应，快速划动鼠标还能逗它扑过来，还会在早上问好
+并提醒你喝水/久坐/早睡，完全离线运行，不上传任何数据。
 
 **技术栈**：Tauri 2 · React 19 · TypeScript · Vite 7 · XState 5 · Tauri Store / Autostart 插件
 
@@ -23,34 +25,55 @@ npm run tauri build  # 生成 NSIS 安装包（target/release/bundle/nsis）
 动画：`PetApp` 用 Canvas 程序化渲染呼吸 / 弹跳 / 挤压 / 旋转（动作参数在
 `src/assets/pet/motion-spec.json`），idle / sleepy 状态会随机眨眼；高清底图加载前自动回退到 240px sprite sheet。
 
+趣味动画（右键设置 →「趣味动画」可逐个开关）：空闲随机小动作、入睡/起床过渡、拖拽悬挂 +
+落地弹跳、长按撸猫 + 爱心、视线跟随鼠标、桌面散步（**默认关闭**，开启后猫才在屏幕内来回走）、
+逗猫棒互动（快速划动鼠标抬头看，连续划动扑击并追光标一小段）。
+
+陪伴提醒（右键设置 →「陪伴提醒」）：喝水、久坐、早睡三项独立开关与节奏；每天早上
+（5:00–11:59）第一次启动会先说“早上好”，勿扰模式下所有提醒静音。
+
+分部位摸摸：点蝴蝶结（害羞护住）、点脸（开心靠过来）、点身体（压扁轻晃）各有独立动作和台词；
+650ms 内双击 `happy`，同一手势内 4 连击 `shy`、9 连击 `angry`（生气发抖）；停顿超过 650ms
+即为新手势，单点/双击/连击互不吞掉。
+
 ## 目录结构
 
 ```
 src/
-  app/          PetApp + usePetController（编排层）
+  app/          PetApp + usePetController（编排层：随机调度 / 散步 / 撸猫）
   pet/          ProceduralAnimation / SpriteAnimation / InteractionArea / petMachine / animationManifest
   dialogue/     对白类型、引擎、触发调度、profile
-  components/   SpeechBubble / SettingsPanel
+  components/   SpeechBubble / SleepZzz / Hearts / SettingsPanel
   storage/      plugin-store 的 preferences / progress 封装
-  platform/     窗口位置恢复与多屏钳制
+  platform/     窗口位置恢复、多屏钳制、散步步进
 scripts/
   gen_placeholder_assets.py    生成占位角色与图标（原创白猫）
-  apply_pet_asset.py           把单张粉色背景立绘抠图并生成 6 组动作 sheet
-  export_procedural_kit.py     从同一立绘导出 1200px 高清帧 + 自动闭眼帧 + motion-spec.json
+  apply_pet_asset.py           抠图 + 用表情/姿势立绘生成 25 组动作 sheet（含 240px 回退）
+  export_procedural_kit.py     从立绘导出 1200px 高清帧 + 5 种表情 + 姿势 state-bases + motion-spec.json
   regenerate_icons.py          用同一立绘重新生成应用/托盘图标
   sync-personalization.mjs     把 personalization.example 补缺复制到 personalization
 personalization.example/       私人内容模板（profile / dates / dialogue）
 personalization/               ← 真实私人内容，已 gitignore
 src-tauri/
-  src/lib.rs    托盘（显示/隐藏 · 暂停 · 设置 · 退出）
+  src/lib.rs    托盘（显示/隐藏 · 勿扰 · 设置 · 退出）
   tauri.conf.json
   capabilities/ 最小权限：window 子集 + store + autostart
 ```
 
 ## 状态机
 
-`idle → sleepy → sleeping`，点击进入 `clicked`，双击 `happy`，5 连击 / 12 连击 `shy`，拖拽 `dragging`。
-`SHOW_DIALOGUE` 按对白的 `motion` 把状态切换到对应表情，气泡超时后 `DIALOGUE_FINISHED`。
+- 基础：`idle → sleepy → sleeping`（默认带 `falling` 入睡下沉 / `waking` 起床伸懒腰过渡），
+  `falling`（入睡中）头顶先冒一个小 `z`，`sleeping`（已睡着）显示大 Zzz 气泡；
+  `sleepy` 困倦阶段不冒泡，看到 ZZZ 即代表已经/正在入睡。
+  45 秒困倦倒计时挂在 `idle` 父状态上，随机小动作不会重置它；点击等真正交互才会重置。
+- 点击：`clicked` 压扁 → 回 idle；650ms 内双击 `happy`；同一手势内 4 连击 `shy`、
+  9 连击 `angry`；单次点击按部位进入 `headpat / bodypat / bowtouch`（摸头 / 戳身体 / 碰蝴蝶结）。
+- 趣味：`DRAG_START → dragging → DRAG_END → landing`；长按 `HOLD_START → petted`；
+  `WALK_START → walking`（散步默认关闭、开启时不会入睡）；idle 下随机进入
+  `stretch / yawn / wash / look / sneeze / shake / spin` 小动作；鼠标快速划动触发
+  `tease`（抬头看）/ `pounce`（扑击 + 短程追光标）。
+- 所有非循环动画播完发 `ANIMATION_FINISHED` 回 idle，并有 3.5–4s 兜底超时。
+- `SHOW_DIALOGUE` 按对白的 `motion` 把状态切换到对应表情，气泡超时后 `DIALOGUE_FINISHED`。
 
 ## 私人内容
 
@@ -59,24 +82,37 @@ src-tauri/
 3. 编辑 `personalization/dialogue.json`（30–50 条对白；字段说明见 `personalization.example/README.md`）
 4. 把角色 sprite sheet 放进 `personalization/assets/`，或直接替换 `public/assets/pet/*.png`
    （素材规范：横向 sheet、240 px 帧、透明 PNG、6–12 FPS、状态命名保持一致）
-   - 若素材是一张"粉色背景 + 白猫"的方形立绘，可直接执行：
-     `python scripts/apply_pet_asset.py 立绘.png`
+   - 若素材是一张"粉色背景 + 白猫"的方形立绘，可直接执行（先 export 生成表情帧，
+     再跑 apply 把对应表情烘进 240px 回退 sprite sheet，两者顺序不要反）：
      `python scripts/export_procedural_kit.py 立绘.png`
+     `python scripts/apply_pet_asset.py 立绘.png`
      `python scripts/regenerate_icons.py 立绘.png`
+   - 姿势立绘投放区：`assets/happy.png.png、shy.png.png、drag.png.png、sleep.png.png、
+     angry.png.png`。脚本会自动抠图，分别作为 happy / shy / dragging / 入睡·睡觉·起床 /
+     angry 的 Canvas 高清基帧和 240px 回退帧；要换姿势时直接替换同名文件后重跑上面两步。
+   - 重新生成素材后必须重新构建前端，打包 exe 前更是如此；否则安装包仍会带上
+     `dist/` 里的旧素材（例如旧的“睁眼 sleep.png”）：
+     `npm run build`（开发环境重启 `npm run tauri dev` 即可）
+   - 若 `export_procedural_kit.py` 报“未能检测到眼睛”，说明素材本身不适合自动表情
+     生成；此时需要换图，脚本会中止而不是静默产出睁眼睡眠帧。
 
 ## 行为节奏（内置）
 
 - 每天主动说话 3–6 次：早晨（07:00–10:00）、午后（12:00–14:00）、深夜（23:30–02:00）、
   90 分钟休息提醒、45–90 分钟间隔的随机事件
-- 点击有回应（带冷却）；5 连击 / 12 连击有专属反应
+- 每天早上（5:00–11:59）第一次启动先说“早上好”，当天只问候一次
+- 陪伴提醒：喝水（默认每 60 分钟）、久坐（默认每 90 分钟）、早睡（默认 23:00），
+  设置面板可调；猫正在说别的话时不会插嘴，勿扰模式下全部静音
+- 点击有回应（带冷却）；点头/点身体/点蝴蝶结反应各不相同；双击与 4 连击 / 9 连击有专属反应
 - 内容四层解锁：第 1–2 天日常 → 第 3–5 天称呼/习惯 → 第 5–10 天私人回忆 → 稀有彩蛋
 
 ## 交付清单
 
-- [x] 正式素材已替换为用户提供的白猫立绘（2026-08-17，抠图 + 6 组动作 + 图标）
-- [ ] 替换私人对白（当前仍为示例数据，不使用无授权的第三方角色图片）
+- [x] 正式素材已替换为用户提供的白猫立绘（2026-08-17，抠图 + 16 组动作 + 图标）
+- [x] 趣味动画六件套：随机小动作 / 入睡起床 / 拖拽落地 / 撸猫爱心 / 视线跟随 / 桌面散步（设置面板可逐个开关）
+- [x] 私人对白已替换为 50 条日常向原创文案（朋友/同事感，不暧昧；不使用无授权的第三方角色图片）
 - [x] `npm run tauri build`，从 `src-tauri/target/release/bundle/nsis/` 取 `KittyPet_*_x64-setup.exe`
 - [x] 本人电脑实测：置顶、拖拽、托盘、开机启动、100% DPI + 128% 文本缩放
 - [ ] 双屏 / 不同缩放比例屏幕组合待实机复测
 - [ ] 只私下发给收礼人（AirDrop / USB / 私密链接），不公开传播
-- [ ] 附 `docs/recipient-readme-template.md` 的说明
+- [x] 附 `docs/recipient-readme-template.md` 的说明（已润色为可直接附送的定稿）

@@ -30,7 +30,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![log_frontend])
         .setup(|app| {
             let toggle = MenuItem::with_id(app, "toggle", "显示 / 隐藏", true, None::<&str>)?;
-            let pause = MenuItem::with_id(app, "pause", "暂停互动", true, None::<&str>)?;
+            let pause = MenuItem::with_id(app, "pause", "勿扰模式", true, None::<&str>)?;
             let settings = MenuItem::with_id(app, "settings", "设置", true, None::<&str>)?;
             let quit = MenuItem::with_id(app, "quit", "退出", true, None::<&str>)?;
             let menu = Menu::with_items(app, &[&toggle, &pause, &settings, &quit])?;

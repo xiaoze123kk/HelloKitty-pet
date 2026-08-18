@@ -10,6 +10,26 @@ import {
 
 export type ProgressStore = Awaited<ReturnType<typeof load>>;
 
+export interface ReminderState {
+  /** 上次喝水提醒时间戳；null 表示还没提醒过 */
+  waterLastAt: number | null;
+  /** 上次久坐提醒时间戳；null 表示还没提醒过 */
+  sedentaryLastAt: number | null;
+  /** 上次早睡提醒日期（YYYY-MM-DD） */
+  sleepLastDate: string | null;
+  /** 上次“早上好”问候日期（YYYY-MM-DD） */
+  morningGreetDate: string | null;
+}
+
+export function emptyReminderState(): ReminderState {
+  return {
+    waterLastAt: null,
+    sedentaryLastAt: null,
+    sleepLastDate: null,
+    morningGreetDate: null,
+  };
+}
+
 export interface ProgressData {
   launchCount: number;
   firstLaunchAt: string | null;
@@ -17,6 +37,7 @@ export interface ProgressData {
   sessionStart: number;
   dialogue: DialogueState;
   triggers: TriggerEngineState;
+  reminders: ReminderState;
 }
 
 export function emptyProgress(now: number): ProgressData {
@@ -27,6 +48,7 @@ export function emptyProgress(now: number): ProgressData {
     sessionStart: now,
     dialogue: emptyDialogueState(),
     triggers: emptyTriggerState(),
+    reminders: emptyReminderState(),
   };
 }
 
@@ -37,6 +59,7 @@ export async function loadProgress(): Promise<{
   const store = await load("progress.json", { autoSave: false });
   const raw = await store.get<Partial<ProgressData>>("pet");
   const now = Date.now();
+  const rawReminders = raw?.reminders;
   const progress: ProgressData = {
     launchCount: typeof raw?.launchCount === "number" ? raw.launchCount : 0,
     firstLaunchAt:
@@ -55,6 +78,24 @@ export async function loadProgress(): Promise<{
       raw?.triggers && typeof raw.triggers === "object"
         ? (raw.triggers as TriggerEngineState)
         : emptyTriggerState(),
+    reminders: {
+      waterLastAt:
+        typeof rawReminders?.waterLastAt === "number"
+          ? rawReminders.waterLastAt
+          : null,
+      sedentaryLastAt:
+        typeof rawReminders?.sedentaryLastAt === "number"
+          ? rawReminders.sedentaryLastAt
+          : null,
+      sleepLastDate:
+        typeof rawReminders?.sleepLastDate === "string"
+          ? rawReminders.sleepLastDate
+          : null,
+      morningGreetDate:
+        typeof rawReminders?.morningGreetDate === "string"
+          ? rawReminders.morningGreetDate
+          : null,
+    },
   };
   return { store, progress };
 }

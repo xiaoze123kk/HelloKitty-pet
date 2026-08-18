@@ -113,22 +113,22 @@
       "cooldownMinutes": 20
     },
     {
-      "id": "rapid_05",
+      "id": "rapid_04",
       "text": "你怎么一直戳我呀……",
       "emotion": "shy",
       "motion": "shy",
       "priority": 90,
-      "trigger": { "type": "rapidClick", "minClicks": 5 },
+      "trigger": { "type": "rapidClick", "minClicks": 4 },
       "cooldownMinutes": 2,
       "dailyLimit": 4
     },
     {
-      "id": "rapid_12",
+      "id": "rapid_09",
       "text": "好、好痒！不理你十秒钟！",
       "emotion": "shy",
       "motion": "shy",
       "priority": 95,
-      "trigger": { "type": "rapidClick", "minClicks": 12 },
+      "trigger": { "type": "rapidClick", "minClicks": 9 },
       "cooldownMinutes": 10,
       "dailyLimit": 2
     },

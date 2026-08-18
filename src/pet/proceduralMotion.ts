@@ -1,5 +1,6 @@
 import type { PetVisualMotion } from "./animationManifest";
 import motionSpecJson from "../assets/pet/motion-spec.json";
+import { ASSET_CACHE_BUST } from "./assetVersion";
 
 export type ExpressionKey = "open" | "closed" | "half" | "happy" | "shy";
 export type EaseName = "linear" | "sineInOut";
@@ -49,16 +50,16 @@ export const CANVAS_BASE_SIZE = BUNDLE.frame || 240;
 export const BLINK_SCHEDULE = BUNDLE.blink;
 
 export const EXPRESSION_URLS: Record<ExpressionKey, string> = {
-  open: "/assets/pet/cutout-frame@5x.png",
-  closed: "/assets/pet/cutout-frame-blink@5x.png",
-  half: "/assets/pet/cutout-frame-half@5x.png",
-  happy: "/assets/pet/cutout-frame-happy@5x.png",
-  shy: "/assets/pet/cutout-frame-shy@5x.png",
+  open: `/assets/pet/cutout-frame@5x.png?${ASSET_CACHE_BUST}`,
+  closed: `/assets/pet/cutout-frame-blink@5x.png?${ASSET_CACHE_BUST}`,
+  half: `/assets/pet/cutout-frame-half@5x.png?${ASSET_CACHE_BUST}`,
+  happy: `/assets/pet/cutout-frame-happy@5x.png?${ASSET_CACHE_BUST}`,
+  shy: `/assets/pet/cutout-frame-shy@5x.png?${ASSET_CACHE_BUST}`,
 };
 
 /** 手工替换位：public/assets/pet/state-bases/{state}.png 优先于自动生成的表情帧 */
 export function stateBaseOverrideUrl(specKey: string): string {
-  return `/assets/pet/state-bases/${specKey}.png`;
+  return `/assets/pet/state-bases/${specKey}.png?${ASSET_CACHE_BUST}`;
 }
 
 export function stateBlinkOverrideUrl(specKey: string): string {
@@ -74,7 +75,25 @@ const SPEC_KEYS: Record<PetVisualMotion, string> = {
   happy: "happy",
   sleepy: "sleepy",
   clicked: "clicked",
-  dragging: "idle",
+  dragging: "dragging",
+  stretch: "stretch",
+  yawn: "yawn",
+  wash: "wash",
+  look: "look",
+  sneeze: "sneeze",
+  shake: "shake",
+  spin: "spin",
+  angry: "angry",
+  fallAsleep: "fallAsleep",
+  wake: "wake",
+  landing: "landing",
+  petted: "petted",
+  walk: "walk",
+  headpat: "headpat",
+  bodypat: "bodypat",
+  bowtouch: "bowtouch",
+  tease: "tease",
+  pounce: "pounce",
 };
 
 export function getSpecKey(motion: PetVisualMotion): string {

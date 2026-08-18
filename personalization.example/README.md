@@ -39,7 +39,7 @@
 | priority | 数字越大越优先；同优先级内按 weight 加权随机 |
 | trigger.type | firstLaunch / timeRange / click / rapidClick / dragEnd / sessionDuration / specialDate / streak / random |
 | trigger.rangeKey | morning / noon / night（仅 timeRange） |
-| trigger.minClicks | 5 / 12 连击门槛（仅 rapidClick） |
+| trigger.minClicks | 4 / 9 连击门槛（仅 rapidClick） |
 | trigger.minutes | 运行时长门槛（仅 sessionDuration） |
 | trigger.specialDateId | 绑定 dates.json 里的 id（仅 specialDate） |
 | trigger.minStreak | 连续打开天数（仅 streak） |
