@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { UnlistenFn } from "@tauri-apps/api/event";
-import { listen } from "@tauri-apps/api/event";
+import { emitTo, listen } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/core";
 import { cursorPosition } from "@tauri-apps/api/window";
 import {
@@ -60,6 +60,13 @@ import {
   type ProgressData,
   type ProgressStore,
 } from "../storage/progress";
+import {
+  recordEvent,
+  relationshipContext,
+  snapshotRelationship,
+  unlockEligibleMemories,
+  type RelationshipEventType,
+} from "../relationship/relationshipEngine";
 
 type PetActor = Actor<typeof petMachine>;
 type PetSnapshot = SnapshotFrom<typeof petMachine>;
@@ -168,6 +175,7 @@ export interface PetController {
     },
   ) => void;
   clearData: () => void;
+  openNest: () => void;
 }
 
 export function usePetController(): PetController {
@@ -257,14 +265,91 @@ export function usePetController(): PetController {
   );
   /** 偏好加载完成前不允许自动恢复散步，避免误读默认值 */
   const walkingReadyRef = useRef(false);
+  const progressSaveTimerRef = useRef<number | undefined>(undefined);
+  const pendingRelationshipDialogsRef = useRef<TriggerContext[]>([]);
+
+  const emitNestSnapshot = useCallback((progress = progressRef.current) => {
+    if (!progress) return;
+    void emitTo("nest", "relationship-snapshot", snapshotRelationship(progress)).catch(
+      () => undefined,
+    );
+  }, []);
+  const emitNestSnapshotRef = useRef(emitNestSnapshot);
+  emitNestSnapshotRef.current = emitNestSnapshot;
+
+  const scheduleProgressSave = useCallback(() => {
+    if (progressSaveTimerRef.current !== undefined) {
+      window.clearTimeout(progressSaveTimerRef.current);
+    }
+    progressSaveTimerRef.current = window.setTimeout(() => {
+      progressSaveTimerRef.current = undefined;
+      const progress = progressRef.current;
+      const store = progressStoreRef.current;
+      if (progress && store) void saveProgress(store, progress);
+    }, 500);
+  }, []);
+  const scheduleProgressSaveRef = useRef(scheduleProgressSave);
+  scheduleProgressSaveRef.current = scheduleProgressSave;
+
+  const recordRelationshipEvent = useCallback(
+    (type: RelationshipEventType): void => {
+      const progress = progressRef.current;
+      if (!progress) return;
+      recordEvent(progress.relationship, type);
+      const unlocked = unlockEligibleMemories(progress.relationship);
+      for (const memoryId of unlocked) {
+        pendingRelationshipDialogsRef.current.push({ type: "memoryUnlocked", memoryId });
+      }
+      if (type === "headpat" && progress.relationship.byPart.head === 10) {
+        pendingRelationshipDialogsRef.current.push({
+          type: "interactionHabit",
+          habit: "headpat",
+          count: progress.relationship.byPart.head,
+        });
+      }
+      emitNestSnapshotRef.current(progress);
+      scheduleProgressSaveRef.current();
+    },
+    [],
+  );
+  const recordRelationshipEventRef = useRef(recordRelationshipEvent);
+  recordRelationshipEventRef.current = recordRelationshipEvent;
 
   // ---------- 对白调度 ----------
   const tryShow = useCallback(
     (ctx: TriggerContext): boolean => {
       const engine = engineRef.current;
       const progress = progressRef.current;
-      if (!engine || !progress || dndRef.current) return false;
-      const dialogue = engine.pick(ctx, new Date(), installedAtRef.current);
+      const relationshipTrigger =
+        ctx.type === "returnAfterAbsence" ||
+        ctx.type === "interactionHabit" ||
+        ctx.type === "memoryUnlocked";
+      if (
+        !engine ||
+        !progress ||
+        dndRef.current ||
+        (relationshipTrigger && actor.getSnapshot().context.currentDialogue)
+      ) {
+        return false;
+      }
+      const context = relationshipContext(progress);
+      const dialogue = engine.pick(
+        ctx,
+        new Date(),
+        installedAtRef.current,
+        {
+          ...context,
+          absenceDays:
+            ctx.type === "returnAfterAbsence"
+              ? ctx.absenceDays
+              : context.absenceDays,
+          headpatCount:
+            ctx.type === "interactionHabit" && ctx.habit === "headpat"
+              ? ctx.count
+              : context.headpatCount,
+          streak: ctx.type === "streak" ? ctx.streak : context.streak,
+        },
+      );
       if (!dialogue) return false;
       actor.send({ type: "SHOW_DIALOGUE", dialogue });
       if (progressStoreRef.current) {
@@ -514,6 +599,12 @@ export function usePetController(): PetController {
         // 恢复散步（若已在散步则只是补发 WALK_START，幂等）
         startWalkingRef.current();
       }
+      if (!next && !actor.getSnapshot().context.currentDialogue) {
+        const pending = pendingRelationshipDialogsRef.current.shift();
+        if (pending && !tryShowRef.current(pending)) {
+          pendingRelationshipDialogsRef.current.unshift(pending);
+        }
+      }
     },
     [actor],
   );
@@ -533,7 +624,12 @@ export function usePetController(): PetController {
       setSnapshot(snap);
 
       if (currentState !== previous) {
-        if (currentState === "clicked") {
+        const pendingRelationshipDialogue = pendingRelationshipDialogsRef.current.shift();
+        if (pendingRelationshipDialogue && tryShowRef.current(pendingRelationshipDialogue)) {
+          // 关系记忆优先于本次的普通互动台词。
+        } else if (pendingRelationshipDialogue) {
+          pendingRelationshipDialogsRef.current.unshift(pendingRelationshipDialogue);
+        } else if (currentState === "clicked") {
           tryShowRef.current({ type: "click" });
         } else if (currentState === "shy") {
           // 状态机里 clickTimes 只保留当前连击手势，直接取长度即可
@@ -583,6 +679,14 @@ export function usePetController(): PetController {
     if (!dialogue) {
       setBubble(null);
       setFollowUp(false);
+      const nextRelationshipDialogue = pendingRelationshipDialogsRef.current.shift();
+      if (nextRelationshipDialogue) {
+        window.setTimeout(() => {
+          if (!tryShowRef.current(nextRelationshipDialogue)) {
+            pendingRelationshipDialogsRef.current.unshift(nextRelationshipDialogue);
+          }
+        }, 120);
+      }
       return;
     }
 
@@ -651,6 +755,7 @@ export function usePetController(): PetController {
       const now = Date.now();
       const today = dateKey(new Date(now));
       const progress = progressLoaded.progress;
+      const relationshipBeforeSession = relationshipContext(progress, now);
       progress.launchCount += 1;
       if (!progress.firstLaunchAt) {
         progress.firstLaunchAt = new Date(now).toISOString();
@@ -659,11 +764,17 @@ export function usePetController(): PetController {
         progress.launchDates.push(today);
       }
       progress.sessionStart = now;
+      recordEvent(progress.relationship, "session_start", now);
+      const startupMemories = unlockEligibleMemories(progress.relationship, now);
+      for (const memoryId of startupMemories) {
+        pendingRelationshipDialogsRef.current.push({ type: "memoryUnlocked", memoryId });
+      }
       progressStoreRef.current = progressLoaded.store;
       progressRef.current = progress;
       installedAtRef.current = new Date(progress.firstLaunchAt);
       engineRef.current = DialogueEngine.fromBundle(progress.dialogue);
       await saveProgress(progressLoaded.store, progress);
+      emitNestSnapshotRef.current(progress);
 
       try {
         await applyAlwaysOnTop(prefsRef.current.alwaysOnTop);
@@ -693,6 +804,11 @@ export function usePetController(): PetController {
         }
       });
       unlisteners.push(unTray);
+
+      const unNestSnapshotRequest = await listen("relationship-snapshot-request", () => {
+        emitNestSnapshotRef.current();
+      });
+      unlisteners.push(unNestSnapshotRequest);
 
       const unMoved = await appWindow.onMoved(() => {
         if (positionSaveTimer !== undefined) {
@@ -739,15 +855,21 @@ export function usePetController(): PetController {
       // 启动时的一次性 / 纪念日触发（留出 6.5 秒给早安问候说完再出场）
       window.setTimeout(() => {
         if (disposed) return;
-        if (progress.launchCount === 1) {
-          tryShowRef.current({ type: "firstLaunch" });
+        let startupShown = false;
+        if (relationshipBeforeSession.absenceDays >= 1) {
+          startupShown = tryShowRef.current({
+            type: "returnAfterAbsence",
+            absenceDays: relationshipBeforeSession.absenceDays,
+          });
+        } else if (progress.launchCount === 1) {
+          startupShown = tryShowRef.current({ type: "firstLaunch" });
         }
-        const special = engineRef.current?.specialDateContext(new Date());
-        if (special) {
-          tryShowRef.current(special);
+        if (!startupShown) {
+          const special = engineRef.current?.specialDateContext(new Date());
+          if (special) startupShown = tryShowRef.current(special);
         }
         const streak = computeStreak(progress.launchDates, today);
-        if (streak >= 7 && !progress.triggers.streakShown) {
+        if (!startupShown && streak >= 7 && !progress.triggers.streakShown) {
           progress.triggers.streakShown = true;
           void saveProgress(progressLoaded.store, progress);
           tryShowRef.current({ type: "streak", streak });
@@ -980,6 +1102,7 @@ export function usePetController(): PetController {
             // 已形成有效划动
             teasePhaseRef.current = "fired";
             teaseEpisodeRef.current = null;
+            recordRelationshipEventRef.current("tease");
             const direction: 1 | -1 = pos.x >= episode.x ? 1 : -1;
 
             // 追逐中：新划动只延长追逐时间，目标已在上面更新
@@ -1070,12 +1193,22 @@ export function usePetController(): PetController {
         window.clearInterval(walkTimerRef.current);
         walkTimerRef.current = undefined;
       }
+      if (progressSaveTimerRef.current !== undefined) {
+        window.clearTimeout(progressSaveTimerRef.current);
+        progressSaveTimerRef.current = undefined;
+        const progress = progressRef.current;
+        const store = progressStoreRef.current;
+        if (progress && store) void saveProgress(store, progress);
+      }
     };
   }, []);
 
   // ---------- 交互 ----------
   const onPetClick = useCallback(
     (part: PetTouchPart) => {
+      recordRelationshipEventRef.current(
+        part === "head" ? "headpat" : part === "body" ? "body_touch" : "bow_touch",
+      );
       actor.send({ type: "CLICK", at: Date.now(), part });
     },
     [actor],
@@ -1086,6 +1219,7 @@ export function usePetController(): PetController {
   }, [actor]);
 
   const onPetDragEnd = useCallback(() => {
+    recordRelationshipEventRef.current("drag");
     actor.send({ type: "DRAG_END" });
     tryShowRef.current({ type: "dragEnd" });
     void (async () => {
@@ -1107,6 +1241,7 @@ export function usePetController(): PetController {
 
   const onHoldStart = useCallback(() => {
     if (!animationRef.current.petting) return;
+    recordRelationshipEventRef.current("petting");
     actor.send({ type: "HOLD_START" });
     setHearts(true);
   }, [actor]);
@@ -1124,6 +1259,14 @@ export function usePetController(): PetController {
   const closeSettings = useCallback(() => {
     settingsOpenRef.current = false;
     setSettingsOpen(false);
+  }, []);
+
+  const openNest = useCallback(() => {
+    void invoke("open_nest")
+      .then(() => emitNestSnapshotRef.current())
+      .catch((error) => {
+        console.error("open nest failed:", error);
+      });
   }, []);
 
   const onScaleChange = useCallback((value: number) => {
@@ -1208,6 +1351,7 @@ export function usePetController(): PetController {
 
       const now = Date.now();
       const fresh = emptyProgress(now);
+      // 清除后从全新的关系状态开始，旧回忆和秘密不再保留。
       progressRef.current = fresh;
       const entries = engineRef.current?.entries ?? [];
       engineRef.current = new DialogueEngine(entries, fresh.dialogue);
@@ -1223,6 +1367,8 @@ export function usePetController(): PetController {
       };
       if (progressStore) await saveProgress(progressStore, fresh);
       if (prefsStore) await savePreferences(prefsStore, prefsRef.current);
+      pendingRelationshipDialogsRef.current = [];
+      emitNestSnapshotRef.current(fresh);
 
       actor.send({
         type: "SHOW_DIALOGUE",
@@ -1268,5 +1414,6 @@ export function usePetController(): PetController {
     toggleAnimation,
     updateReminder,
     clearData,
+    openNest,
   };
 }

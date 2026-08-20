@@ -1,5 +1,5 @@
 {
-  "comment": "示例对白库。text 支持 {{nickname}} / {{yourNickname}} / {{daysTogether}} / {{specialDateName}}。正式内容请在 personalization/ 下替换（该目录已加入 .gitignore，不会进仓库）。",
+  "comment": "示例对白库。text 支持 {{nickname}} / {{yourNickname}} / {{daysTogether}} / {{specialDateName}} / {{absenceDays}} / {{headpatCount}} / {{streak}}。正式内容请在 personalization/ 下替换（该目录已加入 .gitignore，不会进仓库）。",
   "entries": [
     {
       "id": "first_hello",
@@ -8,6 +8,51 @@
       "motion": "wave",
       "priority": 100,
       "trigger": { "type": "firstLaunch" },
+      "onlyOnce": true
+    },
+    {
+      "id": "return_after_absence",
+      "text": "你回来啦。已经有 {{absenceDays}} 天没见到你了。",
+      "emotion": "happy",
+      "motion": "happy",
+      "priority": 120,
+      "trigger": { "type": "returnAfterAbsence", "minAbsenceDays": 1 },
+      "dailyLimit": 1
+    },
+    {
+      "id": "memory_first_interaction",
+      "text": "我记住啦：这是我们第一次互动。",
+      "emotion": "happy",
+      "motion": "happy",
+      "priority": 115,
+      "trigger": { "type": "memoryUnlocked", "memoryId": "first_interaction" },
+      "onlyOnce": true
+    },
+    {
+      "id": "memory_headpat_10",
+      "text": "你已经摸了我 {{headpatCount}} 次头。我就知道你喜欢这里。",
+      "emotion": "shy",
+      "motion": "shy",
+      "priority": 115,
+      "trigger": { "type": "memoryUnlocked", "memoryId": "headpat_10" },
+      "onlyOnce": true
+    },
+    {
+      "id": "memory_streak_3",
+      "text": "已经连续 {{streak}} 天见面啦，我把这件事偷偷收好了。",
+      "emotion": "happy",
+      "motion": "happy",
+      "priority": 115,
+      "trigger": { "type": "memoryUnlocked", "memoryId": "streak_3" },
+      "onlyOnce": true
+    },
+    {
+      "id": "habit_headpat",
+      "text": "第 {{headpatCount}} 次摸头认证：这里果然是你的固定位置。",
+      "emotion": "shy",
+      "motion": "shy",
+      "priority": 110,
+      "trigger": { "type": "interactionHabit", "habit": "headpat", "minCount": 10 },
       "onlyOnce": true
     },
     {

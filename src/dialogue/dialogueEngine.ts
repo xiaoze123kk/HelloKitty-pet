@@ -7,6 +7,7 @@ import type {
   TriggerContext,
 } from "./types";
 import { PROFILE, renderTemplate, specialDateForToday } from "./profile";
+import type { RelationshipContext } from "../relationship/relationshipEngine";
 
 export interface DialogueState {
   lastShown: Record<string, number>;
@@ -20,6 +21,76 @@ export function emptyDialogueState(): DialogueState {
 
 const EMOTIONS: Emotion[] = ["neutral", "happy", "shy", "sleepy", "concerned"];
 const MOTIONS: Motion[] = ["idle", "wave", "shy", "sleep", "happy"];
+
+/**
+ * 关系对白是产品功能的默认内容，不依赖用户已有的 personalization/dialogue.json。
+ * 同 id 的私人对白可覆盖这些默认文案，避免升级时改写任何私有文件。
+ */
+const RELATIONSHIP_ENTRIES: DialogueEntry[] = [
+  {
+    id: "return_after_absence",
+    text: "你回来啦。已经有 {{absenceDays}} 天没见到你了。",
+    emotion: "happy",
+    motion: "happy",
+    priority: 120,
+    trigger: { type: "returnAfterAbsence", minAbsenceDays: 1 },
+    dailyLimit: 1,
+  },
+  {
+    id: "memory_first_interaction",
+    text: "我记住啦：这是我们第一次互动。",
+    emotion: "happy",
+    motion: "happy",
+    priority: 115,
+    trigger: { type: "memoryUnlocked", memoryId: "first_interaction" },
+    onlyOnce: true,
+  },
+  {
+    id: "memory_headpat_10",
+    text: "你已经摸了我 {{headpatCount}} 次头。我就知道你喜欢这里。",
+    emotion: "shy",
+    motion: "shy",
+    priority: 115,
+    trigger: { type: "memoryUnlocked", memoryId: "headpat_10" },
+    onlyOnce: true,
+  },
+  {
+    id: "memory_streak_3",
+    text: "已经连续 {{streak}} 天见面啦，我把这件事偷偷收好了。",
+    emotion: "happy",
+    motion: "happy",
+    priority: 115,
+    trigger: { type: "memoryUnlocked", memoryId: "streak_3" },
+    onlyOnce: true,
+  },
+  {
+    id: "memory_streak_7",
+    text: "第 {{streak}} 天也见到你了。这个小秘密要好好收藏。",
+    emotion: "happy",
+    motion: "happy",
+    priority: 115,
+    trigger: { type: "memoryUnlocked", memoryId: "streak_7" },
+    onlyOnce: true,
+  },
+  {
+    id: "memory_late_night",
+    text: "这么晚还在一起，明天也要好好休息。",
+    emotion: "sleepy",
+    motion: "sleep",
+    priority: 115,
+    trigger: { type: "memoryUnlocked", memoryId: "late_night_companion" },
+    onlyOnce: true,
+  },
+  {
+    id: "habit_headpat",
+    text: "第 {{headpatCount}} 次摸头认证：这里果然是你的固定位置。",
+    emotion: "shy",
+    motion: "shy",
+    priority: 110,
+    trigger: { type: "interactionHabit", habit: "headpat", minCount: 10 },
+    onlyOnce: true,
+  },
+];
 
 function sanitizeEntries(raw: unknown): DialogueEntry[] {
   const list = (raw as { entries?: unknown })?.entries;
@@ -59,7 +130,12 @@ export class DialogueEngine {
   }
 
   static fromBundle(state: DialogueState): DialogueEngine {
-    return new DialogueEngine(sanitizeEntries(dialogueJson), state);
+    const entries = sanitizeEntries(dialogueJson);
+    const configuredIds = new Set(entries.map((entry) => entry.id));
+    return new DialogueEngine(
+      [...entries, ...RELATIONSHIP_ENTRIES.filter((entry) => !configuredIds.has(entry.id))],
+      state,
+    );
   }
 
   reset(): void {
@@ -74,7 +150,12 @@ export class DialogueEngine {
       : null;
   }
 
-  pick(ctx: TriggerContext, now: Date, installedAt: Date): DialogueDisplay | null {
+  pick(
+    ctx: TriggerContext,
+    now: Date,
+    installedAt: Date,
+    relationship?: RelationshipContext,
+  ): DialogueDisplay | null {
     const today = dateKey(now);
     const daysInstalled = Math.floor(
       Math.max(0, now.getTime() - installedAt.getTime()) / 86_400_000,
@@ -126,12 +207,18 @@ export class DialogueEngine {
 
     return {
       id: chosen.id,
-      text: renderTemplate(chosen.text, { now, installedAt, specialDateLabel }),
+      text: renderTemplate(chosen.text, {
+        now,
+        installedAt,
+        specialDateLabel,
+        ...relationship,
+      }),
       followUpText: chosen.followUpText
         ? renderTemplate(chosen.followUpText, {
             now,
             installedAt,
             specialDateLabel,
+            ...relationship,
           })
         : undefined,
       emotion: chosen.emotion,
@@ -168,6 +255,15 @@ function matchesTrigger(entry: DialogueEntry, ctx: TriggerContext): boolean {
       return t.specialDateId === ctx.specialDateId;
     case "streak":
       return ctx.streak >= (t.minStreak ?? 7);
+    case "returnAfterAbsence":
+      return ctx.absenceDays >= (t.minAbsenceDays ?? 1);
+    case "interactionHabit":
+      return (
+        t.habit === ctx.habit &&
+        ctx.count >= (t.minCount ?? Number.POSITIVE_INFINITY)
+      );
+    case "memoryUnlocked":
+      return t.memoryId === ctx.memoryId;
     default:
       return true;
   }

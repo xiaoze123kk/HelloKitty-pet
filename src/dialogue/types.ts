@@ -16,7 +16,10 @@ export type TriggerType =
   | "sessionDuration"
   | "specialDate"
   | "streak"
-  | "random";
+  | "random"
+  | "returnAfterAbsence"
+  | "interactionHabit"
+  | "memoryUnlocked";
 
 export interface DialogueTrigger {
   type: TriggerType;
@@ -30,6 +33,14 @@ export interface DialogueTrigger {
   specialDateId?: string;
   /** 仅 streak：连续打开天数达到该值后可用 */
   minStreak?: number;
+  /** 仅 returnAfterAbsence：间隔至少多少自然日 */
+  minAbsenceDays?: number;
+  /** 仅 interactionHabit：统计项 */
+  habit?: "headpat" | "bodyTouch" | "bowTouch" | "totalInteractions";
+  /** 仅 interactionHabit：达到多少次 */
+  minCount?: number;
+  /** 仅 memoryUnlocked：记忆 id */
+  memoryId?: string;
 }
 
 export interface DialogueEntry {
@@ -71,7 +82,14 @@ export type TriggerContext =
   | { type: "sessionDuration"; minutes: number }
   | { type: "specialDate"; specialDateId: string; label: string }
   | { type: "streak"; streak: number }
-  | { type: "random" };
+  | { type: "random" }
+  | { type: "returnAfterAbsence"; absenceDays: number }
+  | {
+      type: "interactionHabit";
+      habit: "headpat" | "bodyTouch" | "bowTouch" | "totalInteractions";
+      count: number;
+    }
+  | { type: "memoryUnlocked"; memoryId: string };
 
 export interface SpecialDate {
   id: string;

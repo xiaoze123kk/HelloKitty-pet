@@ -104,6 +104,7 @@ export function PetApp() {
         onToggleAnimation={controller.toggleAnimation}
         onUpdateReminder={controller.updateReminder}
         onClearData={controller.clearData}
+        onOpenNest={controller.openNest}
       />
 
       {debugOpen && (

@@ -7,6 +7,12 @@ import {
   emptyTriggerState,
   type TriggerEngineState,
 } from "../dialogue/triggers";
+import {
+  emptyRelationship,
+  computeConsecutiveDays,
+  normalizeRelationship,
+  type RelationshipData,
+} from "../relationship/relationshipEngine";
 
 export type ProgressStore = Awaited<ReturnType<typeof load>>;
 
@@ -38,6 +44,7 @@ export interface ProgressData {
   dialogue: DialogueState;
   triggers: TriggerEngineState;
   reminders: ReminderState;
+  relationship: RelationshipData;
 }
 
 export function emptyProgress(now: number): ProgressData {
@@ -49,7 +56,15 @@ export function emptyProgress(now: number): ProgressData {
     dialogue: emptyDialogueState(),
     triggers: emptyTriggerState(),
     reminders: emptyReminderState(),
+    relationship: emptyRelationship(now),
   };
+}
+
+export function dateKey(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
 }
 
 export async function loadProgress(): Promise<{
@@ -60,12 +75,31 @@ export async function loadProgress(): Promise<{
   const raw = await store.get<Partial<ProgressData>>("pet");
   const now = Date.now();
   const rawReminders = raw?.reminders;
+  const firstLaunchAt =
+    typeof raw?.firstLaunchAt === "string"
+      ? raw.firstLaunchAt
+      : new Date(now).toISOString();
+  const migratedFirstSeenAt = Date.parse(firstLaunchAt);
+  const legacyLaunchDates = Array.isArray(raw?.launchDates)
+    ? raw.launchDates.filter((day): day is string => typeof day === "string")
+    : [];
+  const relationship = normalizeRelationship(
+    raw?.relationship,
+    Number.isFinite(migratedFirstSeenAt) ? migratedFirstSeenAt : now,
+  );
+  if (!raw?.relationship) {
+    relationship.activeDays = [...new Set(legacyLaunchDates)].sort();
+    relationship.sessionCount = typeof raw?.launchCount === "number" ? Math.max(0, raw.launchCount) : 0;
+    relationship.consecutiveDays = computeConsecutiveDays(relationship.activeDays);
+    const lastLegacyDay = relationship.activeDays.at(-1);
+    if (lastLegacyDay) {
+      const parsedLastSeen = Date.parse(`${lastLegacyDay}T12:00:00`);
+      if (Number.isFinite(parsedLastSeen)) relationship.lastSeenAt = parsedLastSeen;
+    }
+  }
   const progress: ProgressData = {
     launchCount: typeof raw?.launchCount === "number" ? raw.launchCount : 0,
-    firstLaunchAt:
-      typeof raw?.firstLaunchAt === "string"
-        ? raw.firstLaunchAt
-        : new Date(now).toISOString(),
+    firstLaunchAt,
     launchDates: Array.isArray(raw?.launchDates) ? raw.launchDates : [],
     sessionStart: typeof raw?.sessionStart === "number" ? raw.sessionStart : now,
     dialogue:
@@ -96,6 +130,7 @@ export async function loadProgress(): Promise<{
           ? rawReminders.morningGreetDate
           : null,
     },
+    relationship,
   };
   return { store, progress };
 }

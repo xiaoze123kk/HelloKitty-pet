@@ -1,6 +1,8 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
 import ReactDOM from "react-dom/client";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import { PetApp } from "./app/PetApp";
+import { NestWindow } from "./components/NestWindow";
 import "./global.css";
 
 function reportToRust(kind: string, message: string): void {
@@ -79,8 +81,15 @@ if (!root) {
 }
 
 // 注意：不使用 StrictMode，避免开发模式双挂载导致启动次数/触发计时被重复执行
+let isNestWindow = false;
+try {
+  isNestWindow = getCurrentWindow().label === "nest";
+} catch {
+  // 浏览器预览模式没有 Tauri 窗口元数据，默认渲染桌宠主界面。
+}
+
 ReactDOM.createRoot(root).render(
   <PetErrorBoundary>
-    <PetApp />
+    {isNestWindow ? <NestWindow /> : <PetApp />}
   </PetErrorBoundary>,
 );

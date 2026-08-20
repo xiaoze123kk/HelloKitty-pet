@@ -995,6 +995,21 @@ body {
   cursor: pointer;
 }
 
+.settings-nest {
+  border: 1px solid #e9b9ca;
+  background: linear-gradient(135deg, #fff9fb, #ffeaf1);
+  color: #b94f75;
+  font-size: 12.5px;
+  font-weight: 700;
+  padding: 9px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.settings-nest:hover {
+  background: #ffe1eb;
+}
+
 .settings-danger:hover {
   background: #fde8ee;
 }
@@ -1005,6 +1020,179 @@ body {
   color: #b0a2aa;
   text-align: center;
   line-height: 1.5;
+}
+
+/* ---------- 小窝 ---------- */
+.nest-window {
+  height: 100%;
+  min-height: 0;
+  box-sizing: border-box;
+  padding: 28px 26px 20px;
+  color: #4a3b45;
+  background:
+    radial-gradient(circle at 92% 4%, rgba(255, 198, 216, 0.52), transparent 29%),
+    linear-gradient(150deg, #fffafc, #fff3f7);
+  font-family: "Microsoft YaHei UI", "Microsoft YaHei", sans-serif;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.nest-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex: 0 0 auto;
+}
+
+.nest-kicker {
+  display: block;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  color: #cf7899;
+}
+
+.nest-header h1 {
+  margin: 5px 0 0;
+  font-size: 26px;
+  letter-spacing: 0.04em;
+}
+
+.nest-close {
+  width: 32px;
+  height: 32px;
+  border: 1px solid #f0dbe5;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.78);
+  color: #8a7a82;
+  cursor: pointer;
+}
+
+.nest-close:hover {
+  background: #fff;
+  color: #c05777;
+}
+
+.nest-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-top: 24px;
+  flex: 0 0 auto;
+}
+
+.nest-stat {
+  min-height: 82px;
+  border: 1px solid rgba(236, 194, 210, 0.78);
+  border-radius: 15px;
+  background: rgba(255, 255, 255, 0.74);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+.nest-stat-wide {
+  grid-column: span 3;
+  min-height: 94px;
+  background: linear-gradient(135deg, rgba(255,255,255,.92), rgba(255,222,233,.88));
+}
+
+.nest-stat strong {
+  font-size: 25px;
+  color: #c65d84;
+  line-height: 1.1;
+}
+
+.nest-stat span {
+  margin-top: 6px;
+  font-size: 11px;
+  color: #8d7a83;
+}
+
+.nest-memories {
+  flex: 1 1 0;
+  min-height: 0;
+  margin-top: 25px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.nest-section-title {
+  font-size: 13px;
+  font-weight: 800;
+  color: #725d67;
+}
+
+.nest-timeline {
+  flex: 1 1 0;
+  min-height: 0;
+  margin-top: 10px;
+  padding-right: 2px;
+  overflow-y: auto;
+}
+
+.nest-event {
+  position: relative;
+  display: flex;
+  gap: 10px;
+  padding: 0 0 14px 3px;
+}
+
+.nest-event:not(:last-child)::before {
+  content: "";
+  position: absolute;
+  width: 1px;
+  background: #ebcbd7;
+  left: 6px;
+  top: 12px;
+  bottom: -2px;
+}
+
+.nest-event-dot {
+  position: relative;
+  z-index: 1;
+  flex: 0 0 auto;
+  width: 12px;
+  height: 12px;
+  margin-top: 3px;
+  border: 3px solid #fff7fa;
+  box-sizing: border-box;
+  border-radius: 50%;
+  background: #dd88a6;
+}
+
+.nest-event strong,
+.nest-event small {
+  display: block;
+}
+
+.nest-event strong {
+  font-size: 12px;
+  color: #5d4953;
+}
+
+.nest-event small {
+  margin-top: 3px;
+  color: #a5929b;
+  font-size: 10px;
+}
+
+.nest-empty {
+  margin: 14px 0;
+  color: #a5929b;
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.nest-footer {
+  margin-top: 14px;
+  flex: 0 0 auto;
+  text-align: center;
+  color: #b09da6;
+  font-size: 10px;
 }
 
 /* ---------- 开发期动作调参面板（Ctrl+Shift+D） ---------- */

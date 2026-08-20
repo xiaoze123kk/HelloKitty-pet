@@ -16,10 +16,22 @@ fn toggle_main_window(app: &tauri::AppHandle) {
     }
 }
 
+fn open_nest_window(app: &tauri::AppHandle) {
+    if let Some(window) = app.get_webview_window("nest") {
+        let _ = window.show();
+        let _ = window.set_focus();
+    }
+}
+
 /// 前端错误诊断通道：只打印到本机终端，不发往任何外部服务。
 #[tauri::command]
 fn log_frontend(message: String) {
     println!("[frontend] {message}");
+}
+
+#[tauri::command]
+fn open_nest(app: tauri::AppHandle) {
+    open_nest_window(&app);
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -27,13 +39,14 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_autostart::Builder::new().build())
         .plugin(tauri_plugin_store::Builder::new().build())
-        .invoke_handler(tauri::generate_handler![log_frontend])
+        .invoke_handler(tauri::generate_handler![log_frontend, open_nest])
         .setup(|app| {
             let toggle = MenuItem::with_id(app, "toggle", "显示 / 隐藏", true, None::<&str>)?;
             let pause = MenuItem::with_id(app, "pause", "勿扰模式", true, None::<&str>)?;
+            let nest = MenuItem::with_id(app, "nest", "我们的小窝", true, None::<&str>)?;
             let settings = MenuItem::with_id(app, "settings", "设置", true, None::<&str>)?;
             let quit = MenuItem::with_id(app, "quit", "退出", true, None::<&str>)?;
-            let menu = Menu::with_items(app, &[&toggle, &pause, &settings, &quit])?;
+            let menu = Menu::with_items(app, &[&toggle, &nest, &pause, &settings, &quit])?;
 
             TrayIconBuilder::with_id("kitty-tray")
                 .icon(
@@ -49,6 +62,7 @@ pub fn run() {
                     "pause" => {
                         let _ = app.emit("tray-command", "toggle-pause");
                     }
+                    "nest" => open_nest_window(app),
                     "settings" => {
                         let _ = app.emit("tray-command", "open-settings");
                     }

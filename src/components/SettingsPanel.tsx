@@ -35,6 +35,7 @@ interface SettingsPanelProps {
     },
   ) => void;
   onClearData: () => void;
+  onOpenNest: () => void;
 }
 
 export function SettingsPanel({
@@ -54,6 +55,7 @@ export function SettingsPanel({
   onToggleAnimation,
   onUpdateReminder,
   onClearData,
+  onOpenNest,
 }: SettingsPanelProps) {
   if (!open) return null;
 
@@ -345,16 +347,20 @@ export function SettingsPanel({
       <div className="settings-row settings-static">
         <span>
           <strong>操作</strong>
-          <small>右键托盘图标：显示/隐藏 · 勿扰 · 设置 · 退出</small>
+          <small>右键托盘图标：显示/隐藏 · 小窝 · 勿扰 · 设置 · 退出</small>
         </span>
       </div>
+
+      <button className="settings-nest" onClick={onOpenNest}>
+        打开我们的小窝
+      </button>
 
       <button className="settings-danger" onClick={onClearData}>
         清除所有数据
       </button>
 
       <div className="settings-footer">
-        KittyPet v0.1.0 · 完全离线运行，不上传任何数据
+        KittyPet v0.2.0 · 完全离线运行，不上传任何数据
       </div>
     </div>
   );

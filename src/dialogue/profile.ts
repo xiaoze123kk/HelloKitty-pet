@@ -54,6 +54,9 @@ export function renderTemplate(
     now: Date;
     installedAt: Date;
     specialDateLabel?: string;
+    absenceDays?: number;
+    headpatCount?: number;
+    streak?: number;
   },
 ): string {
   return text
@@ -63,5 +66,8 @@ export function renderTemplate(
       "{{daysTogether}}",
       String(daysBetween(ctx.installedAt, ctx.now) + 1),
     )
+    .replaceAll("{{absenceDays}}", String(ctx.absenceDays ?? 0))
+    .replaceAll("{{headpatCount}}", String(ctx.headpatCount ?? 0))
+    .replaceAll("{{streak}}", String(ctx.streak ?? 0))
     .replaceAll("{{specialDateName}}", ctx.specialDateLabel ?? "");
 }
