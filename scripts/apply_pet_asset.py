@@ -16,7 +16,7 @@ import sys
 from collections import deque
 from pathlib import Path
 
-from PIL import Image, ImageEnhance, ImageFilter
+from PIL import Image, ImageChops, ImageEnhance, ImageFilter
 
 FRAME = 240
 ROOT = Path(__file__).resolve().parent.parent
@@ -27,12 +27,12 @@ SHEET_DIRS = [
 ]
 
 
-def is_pink(p):
+def is_pink(p, red_blue_gap=16):
     r, g, b = p
-    return (r - b) >= 16 and b < 248
+    return (r - b) >= red_blue_gap and b < 248
 
 
-def cutout_mask(im):
+def cutout_mask(im, pink_gap=16):
     """旧版颜色泛洪（仅作回退方案）：适合"白猫 + 粉背景"。"""
     w, h = im.size
     px = im.load()
@@ -40,12 +40,12 @@ def cutout_mask(im):
     dq = deque()
     for x in range(w):
         for p in ((x, 0), (x, h - 1)):
-            if is_pink(px[p]):
+            if is_pink(px[p], pink_gap):
                 visited[p[1] * w + p[0]] = 1
                 dq.append(p)
     for y in range(h):
         for p in ((0, y), (w - 1, y)):
-            if is_pink(px[p]):
+            if is_pink(px[p], pink_gap):
                 visited[p[1] * w + p[0]] = 1
                 dq.append(p)
     while dq:
@@ -54,7 +54,7 @@ def cutout_mask(im):
             nx, ny = x + dx, y + dy
             if 0 <= nx < w and 0 <= ny < h:
                 idx = ny * w + nx
-                if not visited[idx] and is_pink(px[nx, ny]):
+                if not visited[idx] and is_pink(px[nx, ny], pink_gap):
                     visited[idx] = 1
                     dq.append((nx, ny))
     mask = Image.new("L", (w, h), 0)
@@ -180,14 +180,15 @@ def decontaminate_edges(rgba):
         for x, y in semi:
             idx = y * w + x
             best = None
-            best_light = -1
+            best_distance = float("inf")
             for dx, dy in ((-1, -1), (0, -1), (1, -1), (-1, 0), (1, 0), (-1, 1), (0, 1), (1, 1)):
                 nx, ny = x + dx, y + dy
                 if 0 <= nx < w and 0 <= ny < h and solid[ny * w + nx]:
                     r, g, b, _ = px[nx, ny]
-                    light = r + g + b
-                    if light > best_light:
-                        best_light = light
+                    sr, sg, sb, _ = px[x, y]
+                    distance = (r - sr) ** 2 + (g - sg) ** 2 + (b - sb) ** 2
+                    if distance < best_distance:
+                        best_distance = distance
                         best = (r, g, b)
             if best is not None:
                 px[x, y] = (best[0], best[1], best[2], px[x, y][3])
@@ -196,7 +197,7 @@ def decontaminate_edges(rgba):
                 remaining.append((x, y))
         semi = remaining
 
-    # 半透明但颜色仍很深的点：向白色收敛（边缘最多 1–2px，视觉上是白描边而非黑撕裂）
+    # 没有邻近实体色的极少数半透明点才向白色收敛，避免把胡须边缘漂白。
     for x, y in semi:
         r, g, b, a = px[x, y]
         if r < 150 and g < 150 and b < 150:
@@ -205,7 +206,7 @@ def decontaminate_edges(rgba):
 
 
 def segment_with_rembg(im):
-    """优先方案：U2-Net 分割，保留与背景同色系的粉身体/蝴蝶结。"""
+    """优先方案：U2-Net 分割，并保留睡觉图中独立的右耳。"""
     try:
         from rembg import new_session, remove
     except Exception as exc:  # rembg 未安装
@@ -221,40 +222,37 @@ def segment_with_rembg(im):
         print("rembg result looks blank, fallback to flood fill")
         return None
 
-    strong = keep_subject_components(a, im, low=128, margin=40, min_size=20)
-    body_low = keep_subject_components(a, im, low=64, margin=40, min_size=20)
-    # 睡觉等图里，右脸等浅色区域 rembg 只给了 64–128 的弱置信度；
-    # 把它们补回 mask，但只补浅色像素——深色弱置信像素是垫子/背景晕边，继续丢弃。
-    mask = strong.copy()
-    spx = im.load()
-    sop = strong.load()
-    bop = body_low.load()
-    mp = mask.load()
-    for y in range(mask.height):
-        for x in range(mask.width):
-            if bop[x, y] > 0 and sop[x, y] == 0:
-                r, g, b = spx[x, y]
-                if r + g + b >= 360:
-                    mp[x, y] = 255
-    # 泛洪补白：rembg 会把“白脸”这类浅色主体整块判成背景（alpha≈0）。
-    # 用粉色背景颜色泛洪找回：只补“主体 bbox 内、非粉色背景、颜色浅”的像素，
-    # 深色垫子/被子残片仍不会回来。注意不能用 largest_component：
-    # 蝴蝶结与胡子之间的白脸会和主体被粉背景隔成独立小块，必须保留。
-    flood = cutout_mask(im).filter(ImageFilter.MinFilter(3))
-    fpx = flood.load()
-    fb = mask.getbbox()
-    if fb:
-        fb0 = (max(0, fb[0] - 20), max(0, fb[1] - 20), min(mask.width, fb[2] + 20), min(mask.height, fb[3] + 20))
-        for y in range(fb0[1], fb0[3]):
-            for x in range(fb0[0], fb0[2]):
-                if mp[x, y] == 0 and fpx[x, y] > 0:
-                    r, g, b = spx[x, y]
-                    if r + g + b >= 360:
-                        mp[x, y] = 255
-    # 闭运算补缺口（如耳朵内的小洞、腿间细缝）；不要用 MinFilter 整体腐蚀
-    mask = mask.filter(ImageFilter.MaxFilter(19))
-    mask = mask.filter(ImageFilter.MinFilter(19))
-    mask = mask.filter(ImageFilter.GaussianBlur(1.4))
+    # U2-Net 对这张粉色背景图会把主体内部的白脸判成低 alpha，直接保留
+    # 原 alpha 会让脸在深色背景上发灰。用极低阈值恢复完整主体轮廓，再用
+    # 原图 RGB 合成；这样保留原图的平滑阴影、闭眼、鼻子和泡泡。
+    silhouette = a.point(lambda value: 255 if value >= 8 else 0)
+    mask = largest_component(silhouette, threshold=128)
+
+    # 蝴蝶结右上方的白色右耳与头部被粉色边缘隔开，U2-Net 会漏掉它。
+    # 从原图做颜色泛洪，按位置和面积只补回这一个独立耳朵组件，避免把
+    # 左上角的 Z/星星装饰一起带入。
+    # 颜色泛洪得到的最大块正好是完整的脸部轮廓；和 U2-Net 的主体轮廓
+    # 取并集，补回右脸被误切的浅色边缘。蝴蝶结、胡须和泡泡仍由 U2-Net 保留。
+    # 右脸的柔和粉色阴影在默认阈值下也会被当成背景；提高粉色判定阈值
+    # 后得到完整且平滑的脸部轮廓。
+    face = largest_component(cutout_mask(im, pink_gap=35), threshold=128)
+    ear_flood = cutout_mask(im, pink_gap=35)
+    ear = Image.new("L", im.size, 0)
+    epx = ear.load()
+    for comp in binary_components(ear_flood, threshold=128):
+        if len(comp) < 10000:
+            continue
+        xs = [x for x, _ in comp]
+        ys = [y for _, y in comp]
+        if min(xs) >= 900 and min(ys) >= 300 and max(ys) <= 550:
+            for x, y in comp:
+                epx[x, y] = 255
+    mask = ImageChops.lighter(mask, face)
+    mask = ImageChops.lighter(mask, ear)
+    # 先向内收 1px 再羽化：去掉原粉色背景在外轮廓留下的半透明染色，
+    # 同时保留原图脸部的平滑渐变，不会再引入局部缝合线。
+    mask = mask.filter(ImageFilter.MinFilter(5))
+    mask = mask.filter(ImageFilter.GaussianBlur(0.9))
     clean = Image.new("RGBA", im.size, (0, 0, 0, 0))
     clean.paste(im.convert("RGB"), (0, 0), mask)
     clean = decontaminate_edges(clean)
