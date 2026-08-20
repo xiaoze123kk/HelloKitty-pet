@@ -10,6 +10,14 @@ import {
 } from "@tauri-apps/plugin-autostart";
 import { createActor, type Actor, type SnapshotFrom } from "xstate";
 import { DialogueEngine } from "../dialogue/dialogueEngine";
+import { BehaviorScheduler } from "../behavior/behaviorScheduler";
+import { advanceNeeds, applyInteraction, initialNeeds } from "../behavior/needs";
+import type { BehaviorStep, ContextSnapshot } from "../behavior/types";
+import {
+  initialPointerActivity,
+  pointerContext,
+  updatePointerActivity,
+} from "../context/userActivity";
 import {
   collectTimeTriggers,
   computeStreak,
@@ -259,14 +267,51 @@ export function usePetController(): PetController {
   const walkDirRef = useRef<1 | -1>(1);
   /** 折返后的小停顿时间戳，让转向显得更自然 */
   const walkPauseUntilRef = useRef(0);
-  const idleActionTimerRef = useRef<number | undefined>(undefined);
-  const nextIdleActionAtRef = useRef(
-    Date.now() + 20_000 + Math.floor(Math.random() * 20_000),
-  );
+  const behaviorTimerRef = useRef<number | undefined>(undefined);
+  const pointerActivityPollRef = useRef<number | undefined>(undefined);
+  const pointerActivityRef = useRef(initialPointerActivity());
+  const behaviorNeedsRef = useRef(initialNeeds());
+  const behaviorNeedsAtRef = useRef(Date.now());
+  const behaviorSchedulerRef = useRef(new BehaviorScheduler());
   /** 偏好加载完成前不允许自动恢复散步，避免误读默认值 */
   const walkingReadyRef = useRef(false);
   const progressSaveTimerRef = useRef<number | undefined>(undefined);
   const pendingRelationshipDialogsRef = useRef<TriggerContext[]>([]);
+
+  const behaviorContext = useCallback((now = Date.now()): ContextSnapshot => {
+    const progress = progressRef.current;
+    const pointer = pointerContext(pointerActivityRef.current, now);
+    const date = new Date(now);
+    return {
+      now,
+      hour: date.getHours(),
+      sessionMinutes: progress ? (now - progress.sessionStart) / 60_000 : 0,
+      ...pointer,
+      todayInteractions: progress
+        ? relationshipContext(progress, now).todayInteractions
+        : 0,
+      currentState: stateValueRef.current,
+      idleSubState: idleSubStateRef.current,
+      dnd: dndRef.current,
+      settingsOpen: settingsOpenRef.current,
+      dialogueOpen: actor.getSnapshot().context.currentDialogue !== null,
+      idleActionsEnabled: animationRef.current.idleActions,
+      sleepTransitionsEnabled: animationRef.current.sleepTransitions,
+      walkingEnabled: animationRef.current.walking,
+    };
+  }, [actor]);
+  const behaviorContextRef = useRef(behaviorContext);
+  behaviorContextRef.current = behaviorContext;
+
+  const dispatchBehaviorStep = useCallback((step: BehaviorStep | null): void => {
+    if (!step) return;
+    if (import.meta.env.DEV) {
+      console.debug("[behavior]", step.event.type);
+    }
+    actor.send(step.event);
+  }, [actor]);
+  const dispatchBehaviorStepRef = useRef(dispatchBehaviorStep);
+  dispatchBehaviorStepRef.current = dispatchBehaviorStep;
 
   const emitNestSnapshot = useCallback((progress = progressRef.current) => {
     if (!progress) return;
@@ -296,6 +341,9 @@ export function usePetController(): PetController {
       const progress = progressRef.current;
       if (!progress) return;
       recordEvent(progress.relationship, type);
+      if (type !== "session_start") {
+        behaviorNeedsRef.current = applyInteraction(behaviorNeedsRef.current);
+      }
       const unlocked = unlockEligibleMemories(progress.relationship);
       for (const memoryId of unlocked) {
         pendingRelationshipDialogsRef.current.push({ type: "memoryUnlocked", memoryId });
@@ -351,6 +399,7 @@ export function usePetController(): PetController {
         },
       );
       if (!dialogue) return false;
+      behaviorSchedulerRef.current.cancel();
       actor.send({ type: "SHOW_DIALOGUE", dialogue });
       if (progressStoreRef.current) {
         void saveProgress(progressStoreRef.current, progress);
@@ -590,6 +639,7 @@ export function usePetController(): PetController {
         void savePreferences(prefsStoreRef.current, prefsRef.current);
       }
       if (next) {
+        behaviorSchedulerRef.current.cancel();
         actor.send({ type: "DIALOGUE_FINISHED" });
         // 勿扰期间暂停散步
         if (actor.getSnapshot().value === "walking") {
@@ -894,51 +944,41 @@ export function usePetController(): PetController {
         void saveProgress(progressStoreRef.current, current);
       }, TICK_INTERVAL_MS);
 
-      // 空闲随机小动作：每 20–40 秒尝试一次，只在 idle 时触发
-      nextIdleActionAtRef.current =
-        Date.now() + 20_000 + Math.floor(Math.random() * 20_000);
-      idleActionTimerRef.current = window.setInterval(() => {
+      // Behavior Brain：每 5 秒根据需求、活动和关系选择一个行为。
+      behaviorNeedsAtRef.current = Date.now();
+      behaviorTimerRef.current = window.setInterval(() => {
+        const progress = progressRef.current;
+        if (!progress) return;
         const now = Date.now();
-        if (now < nextIdleActionAtRef.current) return;
-        if (!animationRef.current.idleActions) {
-          nextIdleActionAtRef.current = now + 5_000;
-          return;
-        }
-        if (dndRef.current || settingsOpenRef.current) {
-          nextIdleActionAtRef.current = now + 3_000;
-          return;
-        }
-        if (stateValueRef.current !== "idle") {
-          nextIdleActionAtRef.current = now + 3_000;
-          return;
-        }
-        if (idleSubStateRef.current !== null && idleSubStateRef.current !== "still") {
-          // 小动作还在播，别叠加触发
-          nextIdleActionAtRef.current = now + 2_000;
-          return;
-        }
-        const actions = [
-          "IDLE_STRETCH",
-          "IDLE_YAWN",
-          "IDLE_WASH",
-          "IDLE_LOOK",
-          "IDLE_SNEEZE",
-          "IDLE_SHAKE",
-          "IDLE_SPIN",
-          "IDLE_JUMP",
-          "IDLE_NOD",
-          "IDLE_SWAY",
-          "IDLE_BOW",
-          "IDLE_STARTLE",
-          "IDLE_DIZZY",
-          "IDLE_PEEK",
-        ] as const;
-        actor.send({
-          type: actions[Math.floor(Math.random() * actions.length)],
+        const context = behaviorContextRef.current(now);
+        behaviorNeedsRef.current = advanceNeeds(
+          behaviorNeedsRef.current,
+          now - behaviorNeedsAtRef.current,
+          context,
+        );
+        behaviorNeedsAtRef.current = now;
+        const step = behaviorSchedulerRef.current.tick({
+          needs: behaviorNeedsRef.current,
+          context,
+          relationship: relationshipContext(progress, now),
+          stateKey: stateValueRef.current,
+          idleSubState: idleSubStateRef.current,
         });
-        nextIdleActionAtRef.current =
-          now + 20_000 + Math.floor(Math.random() * 20_000);
+        dispatchBehaviorStepRef.current(step);
       }, 5_000);
+
+      // 只保留光标活动的粗粒度统计，不记录坐标或轨迹。
+      pointerActivityPollRef.current = window.setInterval(() => {
+        void cursorPosition()
+          .then((position) => {
+            pointerActivityRef.current = updatePointerActivity(
+              pointerActivityRef.current,
+              { x: position.x, y: position.y },
+              Date.now(),
+            );
+          })
+          .catch(() => undefined);
+      }, 1_000);
 
       // 陪伴提醒：喝水 / 久坐 / 早睡
       reminderTimerRef.current = window.setInterval(() => {
@@ -954,6 +994,7 @@ export function usePetController(): PetController {
 
         const say = (id: string, text: string) => {
           reminderCounterRef.current += 1;
+          behaviorSchedulerRef.current.cancel();
           actor.send({
             type: "SHOW_DIALOGUE",
             dialogue: {
@@ -1171,9 +1212,13 @@ export function usePetController(): PetController {
       if (tickTimer !== undefined) {
         window.clearInterval(tickTimer);
       }
-      if (idleActionTimerRef.current !== undefined) {
-        window.clearInterval(idleActionTimerRef.current);
-        idleActionTimerRef.current = undefined;
+      if (behaviorTimerRef.current !== undefined) {
+        window.clearInterval(behaviorTimerRef.current);
+        behaviorTimerRef.current = undefined;
+      }
+      if (pointerActivityPollRef.current !== undefined) {
+        window.clearInterval(pointerActivityPollRef.current);
+        pointerActivityPollRef.current = undefined;
       }
       if (reminderTimerRef.current !== undefined) {
         window.clearInterval(reminderTimerRef.current);
@@ -1206,6 +1251,7 @@ export function usePetController(): PetController {
   // ---------- 交互 ----------
   const onPetClick = useCallback(
     (part: PetTouchPart) => {
+      behaviorSchedulerRef.current.cancel();
       recordRelationshipEventRef.current(
         part === "head" ? "headpat" : part === "body" ? "body_touch" : "bow_touch",
       );
@@ -1215,10 +1261,12 @@ export function usePetController(): PetController {
   );
 
   const onPetDragStart = useCallback(() => {
+    behaviorSchedulerRef.current.cancel();
     actor.send({ type: "DRAG_START" });
   }, [actor]);
 
   const onPetDragEnd = useCallback(() => {
+    behaviorSchedulerRef.current.cancel();
     recordRelationshipEventRef.current("drag");
     actor.send({ type: "DRAG_END" });
     tryShowRef.current({ type: "dragEnd" });
@@ -1237,21 +1285,27 @@ export function usePetController(): PetController {
 
   const onAnimationFinished = useCallback(() => {
     actor.send({ type: "ANIMATION_FINISHED" });
+    dispatchBehaviorStepRef.current(
+      behaviorSchedulerRef.current.onAnimationFinished(Date.now()),
+    );
   }, [actor]);
 
   const onHoldStart = useCallback(() => {
     if (!animationRef.current.petting) return;
+    behaviorSchedulerRef.current.cancel();
     recordRelationshipEventRef.current("petting");
     actor.send({ type: "HOLD_START" });
     setHearts(true);
   }, [actor]);
 
   const onHoldEnd = useCallback(() => {
+    behaviorSchedulerRef.current.cancel();
     actor.send({ type: "HOLD_END" });
     setHearts(false);
   }, [actor]);
 
   const openSettings = useCallback(() => {
+    behaviorSchedulerRef.current.cancel();
     settingsOpenRef.current = true;
     setSettingsOpen(true);
   }, []);

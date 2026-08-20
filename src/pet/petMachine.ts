@@ -43,6 +43,7 @@ export type PetEvent =
   | { type: "IDLE_STARTLE" }
   | { type: "IDLE_DIZZY" }
   | { type: "IDLE_PEEK" }
+  | { type: "BEGIN_SLEEP" }
   | { type: "HOLD_START" }
   | { type: "HOLD_END" }
   | { type: "WALK_START" }
@@ -51,7 +52,6 @@ export type PetEvent =
   | { type: "POUNCE" }
   | { type: "SET_ANIMATION_PREFS"; animations: AnimationFlags };
 
-const IDLE_TIMEOUT_MS = 45_000;
 const SLEEPY_TIMEOUT_MS = 8_000;
 
 /**
@@ -247,6 +247,10 @@ export const petMachine = setup({
     WALK_STOP: {
       target: "#pet.idle",
     },
+    BEGIN_SLEEP: {
+      target: "#pet.sleepy",
+      guard: "sleepTransitionsOn",
+    },
     TEASE: [
       {
         guard: "teasingOn",
@@ -263,9 +267,6 @@ export const petMachine = setup({
   states: {
     idle: {
       initial: "still",
-      after: {
-        [IDLE_TIMEOUT_MS]: { target: "#pet.sleepy" },
-      },
       on: {
         IDLE_STRETCH: [
           {

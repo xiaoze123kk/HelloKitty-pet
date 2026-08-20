@@ -1187,6 +1187,30 @@ body {
   line-height: 1.7;
 }
 
+.nest-diary {
+  margin-top: 18px;
+}
+
+.nest-diary-card {
+  margin-top: 9px;
+  padding: 11px 13px;
+  border: 1px solid #f1d7e1;
+  border-radius: 12px;
+  background: #fffafd;
+  color: #705c66;
+  line-height: 1.65;
+}
+
+.nest-diary-card small {
+  color: #b08d9e;
+  font-size: 10px;
+}
+
+.nest-diary-card p {
+  margin: 6px 0 0;
+  font-size: 12px;
+}
+
 .nest-footer {
   margin-top: 14px;
   flex: 0 0 auto;

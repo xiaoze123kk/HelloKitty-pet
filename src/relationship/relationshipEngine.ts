@@ -42,10 +42,15 @@ export interface RelationshipSnapshot {
   todayInteractions: number;
   secretCount: number;
   events: RelationshipEvent[];
+  diaryDate: string;
+  diary: string[];
 }
 
 export interface RelationshipContext {
   headpatCount: number;
+  headpatRatio: number;
+  totalInteractions: number;
+  todayInteractions: number;
   absenceDays: number;
   streak: number;
   daysTogether: number;
@@ -184,12 +189,24 @@ export function unlockEligibleMemories(
 
 export function snapshotRelationship(progress: ProgressData, now = Date.now()): RelationshipSnapshot {
   const today = dateKey(new Date(now));
+  const todayEvents = progress.relationship.recentEvents.filter((event) => event.date === today);
+  const headpats = todayEvents.filter((event) => event.type === "headpat").length;
+  const teases = todayEvents.filter((event) => event.type === "tease").length;
+  const sessions = todayEvents.filter((event) => event.type === "session_start").length;
+  const diary: string[] = ["今天见到了你。"];
+  if (headpats >= 5) diary.push(`你今天摸了我 ${headpats} 次头。`);
+  else if (headpats > 0) diary.push(`你今天摸了我 ${headpats} 次头。`);
+  if (teases > 0) diary.push(`你还拿鼠标逗了我${teases === 1 ? "一次" : `${teases} 次`}。`);
+  if (sessions > 0 && new Date(now).getHours() >= 23) diary.push("今晚我们待得有点晚。");
+  if (todayEvents.length === 0) diary.splice(0, diary.length, "今天还没有留下新的回忆。");
   return {
     daysTogether: daysTogether(progress.relationship.firstSeenAt, now),
     consecutiveDays: progress.relationship.consecutiveDays,
     todayInteractions: progress.relationship.recentEvents.filter((event) => event.date === today && event.type !== "session_start").length,
     secretCount: progress.relationship.unlockedMemories.length,
     events: progress.relationship.recentEvents.slice(-20).reverse(),
+    diaryDate: today,
+    diary,
   };
 }
 
@@ -200,6 +217,14 @@ export function relationshipContext(progress: ProgressData, now = Date.now()): R
   const end = new Date(current.getFullYear(), current.getMonth(), current.getDate()).getTime();
   return {
     headpatCount: progress.relationship.byPart.head,
+    headpatRatio:
+      progress.relationship.totalInteractions > 0
+        ? progress.relationship.byPart.head / progress.relationship.totalInteractions
+        : 0,
+    totalInteractions: progress.relationship.totalInteractions,
+    todayInteractions: progress.relationship.recentEvents.filter(
+      (event) => event.date === dateKey(current) && event.type !== "session_start",
+    ).length,
     absenceDays: Math.max(0, Math.floor((end - start) / 86_400_000)),
     streak: progress.relationship.consecutiveDays,
     daysTogether: daysTogether(progress.relationship.firstSeenAt, now),

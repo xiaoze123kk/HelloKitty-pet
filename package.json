@@ -1,13 +1,14 @@
 {
   "name": "kittypet",
   "private": true,
-  "version": "0.2.0",
+  "version": "0.3.0",
   "type": "module",
   "scripts": {
     "sync:personalization": "node scripts/sync-personalization.mjs",
     "dev": "npm run sync:personalization && vite",
     "build": "npm run sync:personalization && tsc && vite build",
     "test:relationship": "node scripts/test-relationship.mjs",
+    "test:behavior": "node scripts/test-behavior.mjs",
     "preview": "vite preview",
     "tauri": "tauri"
   },
