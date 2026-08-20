@@ -20,13 +20,23 @@ npm run tauri dev    # 开发运行
 npm run tauri build  # 生成 NSIS 安装包（target/release/bundle/nsis）
 ```
 
-一键启动脚本：双击 `start-kittypet.cmd`（默认 dev 模式，会先自动关闭所有旧实例，
-包括安装版旧程序，避免“旧版桌宠抢着运行”）。可选参数：
+## 固定更新、安装与启动流程（Windows）
+
+每次修改素材或代码后，双击 `start-kittypet.bat`（或 `.cmd`）。它会固定执行：
+
+1. 停止旧桌宠进程
+2. 构建最新 Tauri release 安装包
+3. 静默安装 NSIS 包；若安装器保留旧 exe，则用本次构建产物覆盖并校验 SHA-256
+4. 启动已安装版并确认 `kittypet.exe` 进程运行
+
+可选参数：
 
 ```bash
-start-kittypet.cmd          # 停止旧实例 → 启动最新 dev 版
-start-kittypet.cmd release  # 停止旧实例 → 构建并启动最新 release 版
-start-kittypet.cmd stop     # 只停止所有 KittyPet 进程
+start-kittypet.bat                # 完整：构建 → 安装 → 启动
+start-kittypet.bat -Mode Build     # 只停止旧进程并构建
+start-kittypet.bat -Mode Install   # 只安装最新已构建版本
+start-kittypet.bat -Mode Start     # 只启动已安装版本
+start-kittypet.bat -Mode Stop      # 只停止桌宠
 ```
 
 缩放桌宠：右键猫咪打开设置，拖动「大小」滑杆或点 +/−（50%–200%）；也可以按住 Ctrl 在猫咪身上滚动滚轮。
