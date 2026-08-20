@@ -20,6 +20,15 @@ npm run tauri dev    # 开发运行
 npm run tauri build  # 生成 NSIS 安装包（target/release/bundle/nsis）
 ```
 
+一键启动脚本：双击 `start-kittypet.cmd`（默认 dev 模式，会先自动关闭所有旧实例，
+包括安装版旧程序，避免“旧版桌宠抢着运行”）。可选参数：
+
+```bash
+start-kittypet.cmd          # 停止旧实例 → 启动最新 dev 版
+start-kittypet.cmd release  # 停止旧实例 → 构建并启动最新 release 版
+start-kittypet.cmd stop     # 只停止所有 KittyPet 进程
+```
+
 缩放桌宠：右键猫咪打开设置，拖动「大小」滑杆或点 +/−（50%–200%）；也可以按住 Ctrl 在猫咪身上滚动滚轮。
 
 动画：`PetApp` 用 Canvas 程序化渲染呼吸 / 弹跳 / 挤压 / 旋转（动作参数在
@@ -28,6 +37,11 @@ npm run tauri build  # 生成 NSIS 安装包（target/release/bundle/nsis）
 趣味动画（右键设置 →「趣味动画」可逐个开关）：空闲随机小动作、入睡/起床过渡、拖拽悬挂 +
 落地弹跳、长按撸猫 + 爱心、视线跟随鼠标、桌面散步（**默认关闭**，开启后猫才在屏幕内来回走）、
 逗猫棒互动（快速划动鼠标抬头看，连续划动扑击并追光标一小段）。
+
+动作特效（`MotionEffects`，纯 CSS 粒子，不挡交互）：点击冲击星、开心星光 + 音符、害羞汗滴、
+打喷嚏水珠、生气 💢、转圈晕眩星、落地尘土、扑击 💥、逗猫棒问号、打哈欠小 Z、起床星光、
+摸头小心心、摸蝴蝶结闪光、蹦跳星光 + 尘土、摇摆音符、吓一跳 ❗、晕眩星环；
+喝水/久坐/早睡/早安提醒气泡也会带上对应小图标。
 
 陪伴提醒（右键设置 →「陪伴提醒」）：喝水、久坐、早睡三项独立开关与节奏；每天早上
 （5:00–11:59）第一次启动会先说“早上好”，勿扰模式下所有提醒静音。
@@ -49,7 +63,7 @@ src/
 scripts/
   gen_placeholder_assets.py    生成占位角色与图标（原创白猫）
   apply_pet_asset.py           抠图 + 用表情/姿势立绘生成 25 组动作 sheet（含 240px 回退）
-  export_procedural_kit.py     从立绘导出 1200px 高清帧 + 5 种表情 + 姿势 state-bases + motion-spec.json
+  export_procedural_kit.py     从立绘导出 1200px 高清帧 + 6 种表情（含 surprised 惊讶）+ 姿势 state-bases + motion-spec.json
   regenerate_icons.py          用同一立绘重新生成应用/托盘图标
   sync-personalization.mjs     把 personalization.example 补缺复制到 personalization
 personalization.example/       私人内容模板（profile / dates / dialogue）
@@ -70,7 +84,8 @@ src-tauri/
   9 连击 `angry`；单次点击按部位进入 `headpat / bodypat / bowtouch`（摸头 / 戳身体 / 碰蝴蝶结）。
 - 趣味：`DRAG_START → dragging → DRAG_END → landing`；长按 `HOLD_START → petted`；
   `WALK_START → walking`（散步默认关闭、开启时不会入睡）；idle 下随机进入
-  `stretch / yawn / wash / look / sneeze / shake / spin` 小动作；鼠标快速划动触发
+  `stretch / yawn / wash / look / sneeze / shake / spin / jump / nod / sway /
+  bow / startle / dizzy / peek` 小动作；鼠标快速划动触发
   `tease`（抬头看）/ `pounce`（扑击 + 短程追光标）。
 - 所有非循环动画播完发 `ANIMATION_FINISHED` 回 idle，并有 3.5–4s 兜底超时。
 - `SHOW_DIALOGUE` 按对白的 `motion` 把状态切换到对应表情，气泡超时后 `DIALOGUE_FINISHED`。

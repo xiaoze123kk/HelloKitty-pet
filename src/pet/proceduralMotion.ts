@@ -2,7 +2,13 @@ import type { PetVisualMotion } from "./animationManifest";
 import motionSpecJson from "../assets/pet/motion-spec.json";
 import { ASSET_CACHE_BUST } from "./assetVersion";
 
-export type ExpressionKey = "open" | "closed" | "half" | "happy" | "shy";
+export type ExpressionKey =
+  | "open"
+  | "closed"
+  | "half"
+  | "happy"
+  | "shy"
+  | "surprised";
 export type EaseName = "linear" | "sineInOut";
 
 export interface MotionKeyframe {
@@ -55,6 +61,7 @@ export const EXPRESSION_URLS: Record<ExpressionKey, string> = {
   half: `/assets/pet/cutout-frame-half@5x.png?${ASSET_CACHE_BUST}`,
   happy: `/assets/pet/cutout-frame-happy@5x.png?${ASSET_CACHE_BUST}`,
   shy: `/assets/pet/cutout-frame-shy@5x.png?${ASSET_CACHE_BUST}`,
+  surprised: `/assets/pet/cutout-frame-surprised@5x.png?${ASSET_CACHE_BUST}`,
 };
 
 /** 手工替换位：public/assets/pet/state-bases/{state}.png 优先于自动生成的表情帧 */
@@ -94,6 +101,13 @@ const SPEC_KEYS: Record<PetVisualMotion, string> = {
   bowtouch: "bowtouch",
   tease: "tease",
   pounce: "pounce",
+  jump: "jump",
+  nod: "nod",
+  sway: "sway",
+  bow: "bow",
+  startle: "startle",
+  dizzy: "dizzy",
+  peek: "peek",
 };
 
 export function getSpecKey(motion: PetVisualMotion): string {

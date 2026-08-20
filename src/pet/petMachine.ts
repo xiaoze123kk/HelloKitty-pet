@@ -36,6 +36,13 @@ export type PetEvent =
   | { type: "IDLE_SNEEZE" }
   | { type: "IDLE_SHAKE" }
   | { type: "IDLE_SPIN" }
+  | { type: "IDLE_JUMP" }
+  | { type: "IDLE_NOD" }
+  | { type: "IDLE_SWAY" }
+  | { type: "IDLE_BOW" }
+  | { type: "IDLE_STARTLE" }
+  | { type: "IDLE_DIZZY" }
+  | { type: "IDLE_PEEK" }
   | { type: "HOLD_START" }
   | { type: "HOLD_END" }
   | { type: "WALK_START" }
@@ -302,6 +309,48 @@ export const petMachine = setup({
             target: ".spin",
           },
         ],
+        IDLE_JUMP: [
+          {
+            guard: "idleActionsOn",
+            target: ".jump",
+          },
+        ],
+        IDLE_NOD: [
+          {
+            guard: "idleActionsOn",
+            target: ".nod",
+          },
+        ],
+        IDLE_SWAY: [
+          {
+            guard: "idleActionsOn",
+            target: ".sway",
+          },
+        ],
+        IDLE_BOW: [
+          {
+            guard: "idleActionsOn",
+            target: ".bow",
+          },
+        ],
+        IDLE_STARTLE: [
+          {
+            guard: "idleActionsOn",
+            target: ".startle",
+          },
+        ],
+        IDLE_DIZZY: [
+          {
+            guard: "idleActionsOn",
+            target: ".dizzy",
+          },
+        ],
+        IDLE_PEEK: [
+          {
+            guard: "idleActionsOn",
+            target: ".peek",
+          },
+        ],
       },
       states: {
         still: {},
@@ -356,6 +405,62 @@ export const petMachine = setup({
           },
         },
         spin: {
+          after: {
+            [ACTION_FALLBACK_MS]: { target: "#pet.idle.still" },
+          },
+          on: {
+            ANIMATION_FINISHED: { target: "#pet.idle.still" },
+          },
+        },
+        jump: {
+          after: {
+            [ACTION_FALLBACK_MS]: { target: "#pet.idle.still" },
+          },
+          on: {
+            ANIMATION_FINISHED: { target: "#pet.idle.still" },
+          },
+        },
+        nod: {
+          after: {
+            [ACTION_FALLBACK_MS]: { target: "#pet.idle.still" },
+          },
+          on: {
+            ANIMATION_FINISHED: { target: "#pet.idle.still" },
+          },
+        },
+        sway: {
+          after: {
+            [ACTION_FALLBACK_MS]: { target: "#pet.idle.still" },
+          },
+          on: {
+            ANIMATION_FINISHED: { target: "#pet.idle.still" },
+          },
+        },
+        bow: {
+          after: {
+            [ACTION_FALLBACK_MS]: { target: "#pet.idle.still" },
+          },
+          on: {
+            ANIMATION_FINISHED: { target: "#pet.idle.still" },
+          },
+        },
+        startle: {
+          after: {
+            [ACTION_FALLBACK_MS]: { target: "#pet.idle.still" },
+          },
+          on: {
+            ANIMATION_FINISHED: { target: "#pet.idle.still" },
+          },
+        },
+        dizzy: {
+          after: {
+            [ACTION_FALLBACK_MS]: { target: "#pet.idle.still" },
+          },
+          on: {
+            ANIMATION_FINISHED: { target: "#pet.idle.still" },
+          },
+        },
+        peek: {
           after: {
             [ACTION_FALLBACK_MS]: { target: "#pet.idle.still" },
           },
@@ -533,6 +638,20 @@ export function stateToMotion(stateValue: unknown): PetVisualMotion {
           return "shake";
         case "spin":
           return "spin";
+        case "jump":
+          return "jump";
+        case "nod":
+          return "nod";
+        case "sway":
+          return "sway";
+        case "bow":
+          return "bow";
+        case "startle":
+          return "startle";
+        case "dizzy":
+          return "dizzy";
+        case "peek":
+          return "peek";
         default:
           return "idle";
       }

@@ -234,10 +234,12 @@ export function ProceduralAnimation({
     if (loadedSpecKey !== getSpecKey(motion)) return;
 
     const spec = getMotionSpec(motion);
+    if (!Array.isArray(spec.keyframes) || spec.keyframes.length === 0) return;
     let raf = 0;
     let finishedFired = false;
     const start = performance.now();
-    const frameMs = Math.max(16, 1000 / spec.fps);
+    const fps = Number.isFinite(spec.fps) && spec.fps > 0 ? spec.fps : 6;
+    const frameMs = Math.max(16, 1000 / fps);
     const totalMs = spec.keyframes.length * frameMs;
     const lastIndex = Math.max(spec.keyframes.length - 1, 0);
 
@@ -270,6 +272,16 @@ export function ProceduralAnimation({
       } else {
         from = spec.keyframes[index];
         to = spec.keyframes[index + 1];
+      }
+
+      // Vite 冷启动依赖重优化阶段可能出现一次关键帧未就绪的竞态：
+      // 回退到首帧并继续下一帧动画，而不是让 rAF 循环直接抛错停摆。
+      if (!from || !to) {
+        console.warn(
+          `procedural keyframe missing: motion=${motion} fps=${spec.fps} index=${index}`,
+        );
+        from = spec.keyframes[0];
+        to = from;
       }
 
       drawPose(

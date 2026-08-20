@@ -47,6 +47,7 @@ EXPRESSION_FILES = {
     "half": "cutout-frame-half@5x.png",
     "happy": "cutout-frame-happy@5x.png",
     "shy": "cutout-frame-shy@5x.png",
+    "surprised": "cutout-frame-surprised@5x.png",
 }
 
 # 使用 assets/ 投放区整身立绘作为 Canvas 高清基帧的动作。
@@ -254,6 +255,50 @@ def make_expression(base, base_hi, eyes, mode):
                 end=180,
                 fill=line + (255,),
                 width=max(3, round(4.4 * s)),
+            )
+        elif mode == "surprised":
+            # 惊讶：先用毛色盖住原眼，再画略大一号的圆眼 + 两点高光
+            cover_rx = rx * 1.55
+            cover_ry = ry * 1.7
+            draw.ellipse(
+                [
+                    px_cx - cover_rx,
+                    px_cy - cover_ry,
+                    px_cx + cover_rx,
+                    px_cy + cover_ry,
+                ],
+                fill=fur + (255,),
+            )
+            eye_rx = rx * 1.12
+            eye_ry = ry * 1.15
+            draw.ellipse(
+                [
+                    px_cx - eye_rx,
+                    px_cy - eye_ry,
+                    px_cx + eye_rx,
+                    px_cy + eye_ry,
+                ],
+                fill=line + (255,),
+            )
+            hl_r = max(2, round(eye_rx * 0.26))
+            draw.ellipse(
+                [
+                    px_cx - eye_rx * 0.32 - hl_r / 2,
+                    px_cy - eye_ry * 0.38 - hl_r / 2,
+                    px_cx - eye_rx * 0.32 + hl_r / 2,
+                    px_cy - eye_ry * 0.38 + hl_r / 2,
+                ],
+                fill=(255, 255, 255, 235),
+            )
+            hl_r_small = max(1, round(hl_r * 0.55))
+            draw.ellipse(
+                [
+                    px_cx + eye_rx * 0.2 - hl_r_small / 2,
+                    px_cy + eye_ry * 0.25 - hl_r_small / 2,
+                    px_cx + eye_rx * 0.2 + hl_r_small / 2,
+                    px_cy + eye_ry * 0.25 + hl_r_small / 2,
+                ],
+                fill=(255, 255, 255, 190),
             )
         else:
             # closed / happy：先完全盖住眼睛，再画下弯眼线

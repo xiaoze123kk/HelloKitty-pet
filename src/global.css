@@ -97,6 +97,24 @@ body {
   word-break: break-word;
 }
 
+.bubble-accent {
+  flex-shrink: 0;
+  margin-right: 8px;
+  font-size: 17px;
+  line-height: 1;
+  animation: bubble-accent-bob 1.6s ease-in-out infinite;
+}
+
+@keyframes bubble-accent-bob {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-4deg);
+  }
+  50% {
+    transform: translateY(-3px) rotate(5deg);
+  }
+}
+
 .bubble-shy .bubble-text {
   color: #b25b78;
 }
@@ -308,6 +326,506 @@ body {
     opacity: 0;
     transform: translateY(-36px) scale(1.15);
   }
+}
+
+/* ---------- 动作特效层（MotionEffects） ---------- */
+.motion-fx-layer {
+  position: absolute;
+  left: 30px;
+  top: 80px;
+  width: 240px;
+  height: 240px;
+  pointer-events: none;
+  z-index: 16;
+}
+
+.fx {
+  position: absolute;
+  line-height: 1;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+/* 点击：冲击小星星 */
+.fx-click-star {
+  color: #f7b731;
+  animation: fx-pop 0.4s ease-out forwards;
+}
+
+.fx-click-star-1 {
+  left: 92px;
+  top: 56px;
+  font-size: 15px;
+}
+
+.fx-click-star-2 {
+  left: 160px;
+  top: 98px;
+  font-size: 10px;
+  animation-delay: 0.05s;
+}
+
+@keyframes fx-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.3) rotate(-20deg);
+  }
+  45% {
+    opacity: 1;
+    transform: scale(1.15) rotate(15deg);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.9) rotate(30deg) translateY(-10px);
+  }
+}
+
+/* 开心 / 打招呼：星光 + 音符 */
+.fx-sparkle {
+  color: #ffcf5c;
+  animation: fx-twinkle 0.6s ease-in-out infinite;
+}
+
+.fx-sparkle-1 {
+  left: 26px;
+  top: 36px;
+  font-size: 16px;
+}
+
+.fx-sparkle-2 {
+  left: 208px;
+  top: 58px;
+  font-size: 11px;
+  animation-delay: 0.25s;
+}
+
+.fx-note {
+  color: #8f7bd8;
+  animation: fx-note-float 0.6s ease-in-out infinite;
+}
+
+.fx-note-1 {
+  left: 38px;
+  top: 96px;
+  font-size: 15px;
+}
+
+.fx-note-2 {
+  left: 196px;
+  top: 112px;
+  font-size: 12px;
+  animation-delay: 0.2s;
+}
+
+@keyframes fx-twinkle {
+  0%,
+  100% {
+    opacity: 0.15;
+    transform: scale(0.7) rotate(0deg);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.15) rotate(18deg);
+  }
+}
+
+@keyframes fx-note-float {
+  0%,
+  100% {
+    opacity: 0;
+    transform: translateY(6px) rotate(-6deg);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-6px) rotate(8deg);
+  }
+}
+
+/* 害羞：汗滴 */
+.fx-sweat {
+  left: 180px;
+  top: 42px;
+  font-size: 16px;
+  color: #7fc4f5;
+  animation: fx-sweat 0.72s ease-in forwards;
+}
+
+@keyframes fx-sweat {
+  0% {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.6);
+  }
+  35% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0.85;
+    transform: translateY(16px) scale(1.08);
+  }
+}
+
+/* 打喷嚏：水珠向三个方向飞溅 */
+.fx-sneeze {
+  color: #8ed3f7;
+  animation: fx-sneeze 0.68s ease-out forwards;
+}
+
+.fx-sneeze-left {
+  left: 136px;
+  top: 54px;
+  font-size: 13px;
+}
+
+.fx-sneeze-right {
+  left: 148px;
+  top: 56px;
+  font-size: 11px;
+  animation-delay: 0.04s;
+}
+
+.fx-sneeze-up {
+  left: 158px;
+  top: 52px;
+  font-size: 9px;
+  animation-delay: 0.08s;
+}
+
+@keyframes fx-sneeze {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) scale(0.5);
+  }
+  30% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--fx-dx, -30px), var(--fx-dy, -16px)) scale(1.1);
+  }
+}
+
+.fx-sneeze-left {
+  --fx-dx: -30px;
+  --fx-dy: -14px;
+}
+
+.fx-sneeze-right {
+  --fx-dx: 32px;
+  --fx-dy: -18px;
+}
+
+.fx-sneeze-up {
+  --fx-dx: 6px;
+  --fx-dy: -30px;
+}
+
+/* 生气：青筋符号 */
+.fx-anger {
+  left: 184px;
+  top: 34px;
+  font-size: 20px;
+  color: #f0526b;
+  animation: fx-anger-pop 0.9s ease-in-out infinite;
+}
+
+.fx-anger-2 {
+  left: 154px;
+  top: 58px;
+  font-size: 11px;
+  animation-delay: 0.15s;
+}
+
+@keyframes fx-anger-pop {
+  0%,
+  100% {
+    opacity: 0.75;
+    transform: scale(0.9) rotate(-5deg);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.15) rotate(4deg);
+  }
+}
+
+/* 转圈：环绕的晕眩星星 */
+.fx-spin-orbit {
+  position: absolute;
+  left: 70px;
+  top: 58px;
+  width: 100px;
+  height: 100px;
+  animation: fx-orbit-spin 1.1s linear infinite;
+}
+
+.fx-orbit-star {
+  color: #f5b942;
+}
+
+.fx-orbit-star-1 {
+  left: 50%;
+  top: 0;
+  transform: translate(-50%, -50%);
+  font-size: 14px;
+}
+
+.fx-orbit-star-2 {
+  left: 100%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 10px;
+}
+
+.fx-orbit-star-3 {
+  left: 50%;
+  top: 100%;
+  transform: translate(-50%, -50%);
+  font-size: 12px;
+}
+
+@keyframes fx-orbit-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* 落地：两侧尘土 */
+.fx-dust {
+  color: #c9b8a8;
+  opacity: 0;
+  animation: fx-dust 0.5s ease-out forwards;
+}
+
+.fx-dust-left {
+  left: 38px;
+  top: 178px;
+  font-size: 18px;
+}
+
+.fx-dust-right {
+  left: 184px;
+  top: 178px;
+  font-size: 14px;
+  animation-delay: 0.05s;
+}
+
+@keyframes fx-dust {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) scale(0.5);
+  }
+  40% {
+    opacity: 0.85;
+    transform: translate(var(--fx-dx, 0), -6px) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(calc(var(--fx-dx, 0) * 2), -10px) scale(1.25);
+  }
+}
+
+.fx-dust-left {
+  --fx-dx: -12px;
+}
+
+.fx-dust-right {
+  --fx-dx: 12px;
+}
+
+/* 蹦跳动作里尘土延迟到落地瞬间才出现 */
+.fx-jump-dust-left {
+  animation-delay: 0.28s;
+}
+
+.fx-jump-dust-right {
+  animation-delay: 0.32s;
+}
+
+/* 扑击：冲击波 */
+.fx-pounce-boom {
+  left: 104px;
+  top: 86px;
+  font-size: 26px;
+  animation: fx-boom 0.6s ease-out forwards;
+}
+
+.fx-pounce-ray {
+  color: #f7b731;
+  animation: fx-pop 0.45s ease-out forwards;
+}
+
+.fx-pounce-ray-1 {
+  left: 80px;
+  top: 72px;
+  font-size: 11px;
+}
+
+.fx-pounce-ray-2 {
+  left: 160px;
+  top: 96px;
+  font-size: 9px;
+  animation-delay: 0.08s;
+}
+
+@keyframes fx-boom {
+  0% {
+    opacity: 0;
+    transform: scale(0.2);
+  }
+  35% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+  70% {
+    opacity: 0.9;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.25);
+  }
+}
+
+/* 逗猫棒抬头：好奇问号 */
+.fx-question {
+  left: 198px;
+  top: 44px;
+  font-size: 18px;
+  color: #b98ad3;
+  animation: fx-question-float 0.75s ease-in-out infinite;
+}
+
+@keyframes fx-question-float {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: translateY(2px) scale(0.85);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-8px) scale(1.1);
+  }
+}
+
+/* 吓一跳：感叹号 */
+.fx-startle-mark {
+  left: 184px;
+  top: 38px;
+  font-size: 20px;
+  animation: fx-startle-pop 0.5s ease-out forwards;
+}
+
+@keyframes fx-startle-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.3) translateY(4px);
+  }
+  35% {
+    opacity: 1;
+    transform: scale(1.25) translateY(-2px);
+  }
+  100% {
+    opacity: 0.9;
+    transform: scale(1.05) translateY(-4px);
+  }
+}
+
+/* 打哈欠：飘走的小 Z */
+.fx-yawn-z {
+  left: 196px;
+  top: 64px;
+  font-size: 13px;
+  color: #a5b1e0;
+  animation: fx-yawn-drift 0.85s ease-out forwards;
+}
+
+@keyframes fx-yawn-drift {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) scale(0.6);
+  }
+  35% {
+    opacity: 0.9;
+    transform: translate(-6px, -8px) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-16px, -22px) scale(1.15);
+  }
+}
+
+/* 起床：清晨星光 */
+.fx-wake-spark {
+  color: #ffd76a;
+  animation: fx-twinkle 0.7s ease-in-out infinite;
+}
+
+.fx-wake-spark-1 {
+  left: 52px;
+  top: 26px;
+  font-size: 14px;
+}
+
+.fx-wake-spark-2 {
+  left: 188px;
+  top: 30px;
+  font-size: 10px;
+  animation-delay: 0.3s;
+}
+
+/* 摸头：小心心 */
+.fx-headpat-heart {
+  color: #ff87a8;
+  animation: fx-heart-rise 0.55s ease-out forwards;
+}
+
+.fx-headpat-heart-1 {
+  left: 92px;
+  top: 66px;
+  font-size: 14px;
+}
+
+.fx-headpat-heart-2 {
+  left: 132px;
+  top: 58px;
+  font-size: 10px;
+  animation-delay: 0.08s;
+}
+
+@keyframes fx-heart-rise {
+  0% {
+    opacity: 0;
+    transform: translateY(4px) scale(0.6);
+  }
+  30% {
+    opacity: 1;
+    transform: translateY(0) scale(1.05);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-16px) scale(1.1);
+  }
+}
+
+/* 摸蝴蝶结：蝴蝶结闪光 */
+.fx-bow-spark {
+  color: #ffb9d3;
+  animation: fx-pop 0.7s ease-out forwards;
+}
+
+.fx-bow-spark-1 {
+  left: 96px;
+  top: 66px;
+  font-size: 13px;
+}
+
+.fx-bow-spark-2 {
+  left: 150px;
+  top: 60px;
+  font-size: 9px;
+  animation-delay: 0.12s;
 }
 
 /* ---------- 设置面板 ---------- */

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Hearts } from "../components/Hearts";
 import { MotionDebugPanel } from "../components/MotionDebugPanel";
+import { MotionEffects } from "../components/MotionEffects";
 import { SettingsPanel } from "../components/SettingsPanel";
 import { SleepZzz } from "../components/SleepZzz";
 import { SpeechBubble } from "../components/SpeechBubble";
@@ -61,6 +62,8 @@ export function PetApp() {
       />
 
       <SleepZzz motion={controller.motion} />
+
+      <MotionEffects motion={controller.motion} />
 
       <Hearts active={controller.hearts} />
 

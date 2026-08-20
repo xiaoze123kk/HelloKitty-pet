@@ -64,7 +64,14 @@ export type PetVisualMotion =
   | "bodypat"
   | "bowtouch"
   | "tease"
-  | "pounce";
+  | "pounce"
+  | "jump"
+  | "nod"
+  | "sway"
+  | "bow"
+  | "startle"
+  | "dizzy"
+  | "peek";
 
 export const petMotions: Record<PetVisualMotion, MotionConfig> = {
   idle: motions.idle,
@@ -93,4 +100,11 @@ export const petMotions: Record<PetVisualMotion, MotionConfig> = {
   bowtouch: sheetConfig("/assets/pet/bowtouch.png", "bowtouch"),
   tease: sheetConfig("/assets/pet/tease.png", "tease"),
   pounce: sheetConfig("/assets/pet/pounce.png", "pounce"),
+  jump: sheetConfig("/assets/pet/jump.png", "jump"),
+  nod: sheetConfig("/assets/pet/nod.png", "nod"),
+  sway: sheetConfig("/assets/pet/sway.png", "sway"),
+  bow: sheetConfig("/assets/pet/bow.png", "bow"),
+  startle: sheetConfig("/assets/pet/startle.png", "startle"),
+  dizzy: sheetConfig("/assets/pet/dizzy.png", "dizzy"),
+  peek: sheetConfig("/assets/pet/peek.png", "peek"),
 };

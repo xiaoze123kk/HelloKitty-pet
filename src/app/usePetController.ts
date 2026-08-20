@@ -803,6 +803,13 @@ export function usePetController(): PetController {
           "IDLE_SNEEZE",
           "IDLE_SHAKE",
           "IDLE_SPIN",
+          "IDLE_JUMP",
+          "IDLE_NOD",
+          "IDLE_SWAY",
+          "IDLE_BOW",
+          "IDLE_STARTLE",
+          "IDLE_DIZZY",
+          "IDLE_PEEK",
         ] as const;
         actor.send({
           type: actions[Math.floor(Math.random() * actions.length)],
