@@ -11,8 +11,14 @@ import {
 import { createActor, type Actor, type SnapshotFrom } from "xstate";
 import { DialogueEngine } from "../dialogue/dialogueEngine";
 import { BehaviorScheduler } from "../behavior/behaviorScheduler";
-import { advanceNeeds, applyInteraction, initialNeeds } from "../behavior/needs";
-import type { BehaviorStep, ContextSnapshot } from "../behavior/types";
+import {
+  advanceNeeds,
+  applyInteraction,
+  applyRest,
+  initialNeeds,
+  recordBehaviorAction,
+} from "../behavior/needs";
+import type { BehaviorId, BehaviorStep, ContextSnapshot } from "../behavior/types";
 import {
   initialPointerActivity,
   pointerContext,
@@ -118,6 +124,14 @@ const MORNING_LINES = [
   "早呀，今天也要多喝水哦",
 ];
 
+const BEHAVIOR_THOUGHTS: Partial<Record<BehaviorId, string>> = {
+  sleep: "有点困啦…",
+  rest: "安静歇一会儿。",
+  seek_attention: "偷偷看看你。",
+  self_play: "自己玩一会儿。",
+  explore: "去旁边看看。",
+};
+
 const HEAD_TOUCH_LINES = [
   "摸摸头好舒服~",
   "呼噜呼噜，喜欢这样",
@@ -140,6 +154,8 @@ export interface PetController {
   /** 状态机当前动作（驱动程序化动画 / sheet 兜底） */
   motion: PetVisualMotion;
   bubble: DialogueDisplay | null;
+  /** 自主行为的轻量想法提示，不改变状态机，也不占用对白配额。 */
+  behaviorThought: string | null;
   followUp: boolean;
   settingsOpen: boolean;
   dnd: boolean;
@@ -203,6 +219,7 @@ export function usePetController(): PetController {
     actor.getSnapshot(),
   );
   const [bubble, setBubble] = useState<DialogueDisplay | null>(null);
+  const [behaviorThought, setBehaviorThought] = useState<string | null>(null);
   const [followUp, setFollowUp] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [dnd, setDnd] = useState(false);
@@ -237,6 +254,10 @@ export function usePetController(): PetController {
   const stateValueRef = useRef<string>("idle");
   const idleSubStateRef = useRef<string | null>(null);
   const bubbleTimersRef = useRef<number[]>([]);
+  const behaviorThoughtTimerRef = useRef<number | undefined>(undefined);
+  const lastBehaviorThoughtAtRef = useRef(0);
+  const lastBehaviorPersistAtRef = useRef(0);
+  const skipFinalProgressSaveRef = useRef(false);
   const dndRef = useRef(false);
   const settingsOpenRef = useRef(false);
   const animationRef = useRef<AnimationPreferences>(DEFAULT_ANIMATIONS);
@@ -336,6 +357,43 @@ export function usePetController(): PetController {
   const scheduleProgressSaveRef = useRef(scheduleProgressSave);
   scheduleProgressSaveRef.current = scheduleProgressSave;
 
+  const recordAutonomousBehavior = useCallback(
+    (id: BehaviorId, now: number): void => {
+      const progress = progressRef.current;
+      if (!progress) return;
+      if (id === "rest") {
+        behaviorNeedsRef.current = applyRest(behaviorNeedsRef.current);
+      }
+      progress.behavior.needs = behaviorNeedsRef.current;
+      recordBehaviorAction(progress.behavior, id, now);
+      lastBehaviorPersistAtRef.current = now;
+      const thought = BEHAVIOR_THOUGHTS[id];
+      const important = id === "sleep" || id === "seek_attention";
+      if (
+        thought &&
+        !dndRef.current &&
+        !settingsOpenRef.current &&
+        now - lastBehaviorThoughtAtRef.current >= 180_000 &&
+        (important || Math.random() < 0.35)
+      ) {
+        lastBehaviorThoughtAtRef.current = now;
+        setBehaviorThought(thought);
+        if (behaviorThoughtTimerRef.current !== undefined) {
+          window.clearTimeout(behaviorThoughtTimerRef.current);
+        }
+        behaviorThoughtTimerRef.current = window.setTimeout(() => {
+          behaviorThoughtTimerRef.current = undefined;
+          setBehaviorThought(null);
+        }, 2_400);
+      }
+      emitNestSnapshotRef.current(progress);
+      scheduleProgressSaveRef.current();
+    },
+    [],
+  );
+  const recordAutonomousBehaviorRef = useRef(recordAutonomousBehavior);
+  recordAutonomousBehaviorRef.current = recordAutonomousBehavior;
+
   const recordRelationshipEvent = useCallback(
     (type: RelationshipEventType): void => {
       const progress = progressRef.current;
@@ -343,6 +401,8 @@ export function usePetController(): PetController {
       recordEvent(progress.relationship, type);
       if (type !== "session_start") {
         behaviorNeedsRef.current = applyInteraction(behaviorNeedsRef.current);
+        progress.behavior.needs = behaviorNeedsRef.current;
+        progress.behavior.updatedAt = Date.now();
       }
       const unlocked = unlockEligibleMemories(progress.relationship);
       for (const memoryId of unlocked) {
@@ -805,6 +865,9 @@ export function usePetController(): PetController {
       const now = Date.now();
       const today = dateKey(new Date(now));
       const progress = progressLoaded.progress;
+      behaviorNeedsRef.current = progress.behavior.needs;
+      behaviorNeedsAtRef.current = now;
+      lastBehaviorPersistAtRef.current = now;
       const relationshipBeforeSession = relationshipContext(progress, now);
       progress.launchCount += 1;
       if (!progress.firstLaunchAt) {
@@ -859,6 +922,45 @@ export function usePetController(): PetController {
         emitNestSnapshotRef.current();
       });
       unlisteners.push(unNestSnapshotRequest);
+
+      const unBackupRequest = await listen<"create" | "restore">(
+        "data-backup-request",
+        (event) => {
+          void (async () => {
+            try {
+              const progress = progressRef.current;
+              if (progress && progressStoreRef.current) {
+                progress.behavior.needs = behaviorNeedsRef.current;
+                progress.behavior.updatedAt = Date.now();
+                await saveProgress(progressStoreRef.current, progress);
+              }
+              if (prefsStoreRef.current) {
+                await savePreferences(prefsStoreRef.current, prefsRef.current);
+              }
+              if (event.payload === "create") {
+                const path = await invoke<string>("create_backup");
+                await emitTo("nest", "data-backup-result", {
+                  ok: true,
+                  message: `备份已保存：${path}`,
+                });
+              } else {
+                await emitTo("nest", "data-backup-result", {
+                  ok: true,
+                  message: "正在恢复最近备份并重新启动 Kitty…",
+                });
+                skipFinalProgressSaveRef.current = true;
+                await invoke<void>("restore_latest_backup");
+              }
+            } catch (error) {
+              await emitTo("nest", "data-backup-result", {
+                ok: false,
+                message: `操作失败：${String(error)}`,
+              }).catch(() => undefined);
+            }
+          })();
+        },
+      );
+      unlisteners.push(unBackupRequest);
 
       const unMoved = await appWindow.onMoved(() => {
         if (positionSaveTimer !== undefined) {
@@ -957,6 +1059,8 @@ export function usePetController(): PetController {
           context,
         );
         behaviorNeedsAtRef.current = now;
+        progress.behavior.needs = behaviorNeedsRef.current;
+        progress.behavior.updatedAt = now;
         const step = behaviorSchedulerRef.current.tick({
           needs: behaviorNeedsRef.current,
           context,
@@ -964,6 +1068,14 @@ export function usePetController(): PetController {
           stateKey: stateValueRef.current,
           idleSubState: idleSubStateRef.current,
         });
+        const startedBehavior = behaviorSchedulerRef.current.consumeStartedBehavior();
+        if (startedBehavior) {
+          recordAutonomousBehaviorRef.current(startedBehavior, now);
+        } else if (now - lastBehaviorPersistAtRef.current >= 60_000) {
+          lastBehaviorPersistAtRef.current = now;
+          scheduleProgressSaveRef.current();
+          emitNestSnapshotRef.current(progress);
+        }
         dispatchBehaviorStepRef.current(step);
       }, 5_000);
 
@@ -1241,9 +1353,17 @@ export function usePetController(): PetController {
       if (progressSaveTimerRef.current !== undefined) {
         window.clearTimeout(progressSaveTimerRef.current);
         progressSaveTimerRef.current = undefined;
-        const progress = progressRef.current;
-        const store = progressStoreRef.current;
-        if (progress && store) void saveProgress(store, progress);
+      }
+      if (behaviorThoughtTimerRef.current !== undefined) {
+        window.clearTimeout(behaviorThoughtTimerRef.current);
+        behaviorThoughtTimerRef.current = undefined;
+      }
+      const progress = progressRef.current;
+      const store = progressStoreRef.current;
+      if (progress && store && !skipFinalProgressSaveRef.current) {
+        progress.behavior.needs = behaviorNeedsRef.current;
+        progress.behavior.updatedAt = Date.now();
+        void saveProgress(store, progress);
       }
     };
   }, []);
@@ -1407,6 +1527,10 @@ export function usePetController(): PetController {
       const fresh = emptyProgress(now);
       // 清除后从全新的关系状态开始，旧回忆和秘密不再保留。
       progressRef.current = fresh;
+      behaviorNeedsRef.current = fresh.behavior.needs;
+      behaviorNeedsAtRef.current = now;
+      behaviorSchedulerRef.current.reset();
+      setBehaviorThought(null);
       const entries = engineRef.current?.entries ?? [];
       engineRef.current = new DialogueEngine(entries, fresh.dialogue);
       installedAtRef.current = new Date(now);
@@ -1441,6 +1565,7 @@ export function usePetController(): PetController {
   return {
     motion,
     bubble,
+    behaviorThought,
     followUp,
     settingsOpen,
     dnd,

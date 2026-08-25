@@ -20,6 +20,23 @@ export interface PetNeeds {
   curiosity: number;
 }
 
+export interface BehaviorHistoryEntry {
+  id: BehaviorId;
+  at: number;
+  date: string;
+}
+
+/**
+ * 可持久化的生命状态。内部需求不会作为惩罚型数值展示给用户，
+ * 只用于让 Kitty 在跨会话后仍保持连续的作息和性格。
+ */
+export interface BehaviorStateData {
+  version: 1;
+  needs: PetNeeds;
+  updatedAt: number;
+  recentActions: BehaviorHistoryEntry[];
+}
+
 export interface ContextSnapshot {
   now: number;
   hour: number;

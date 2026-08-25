@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "KittyPet",
-  "version": "0.3.0",
+  "version": "0.5.0",
   "identifier": "com.kittypet.app",
   "build": {
     "beforeDevCommand": "node scripts/sync-personalization.mjs && node node_modules/vite/bin/vite.js",
@@ -26,8 +26,8 @@
       {
         "label": "nest",
         "title": "KittyPet · 我们的小窝",
-        "width": 420,
-        "height": 560,
+        "width": 440,
+        "height": 680,
         "resizable": false,
         "decorations": false,
         "transparent": false,

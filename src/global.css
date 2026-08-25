@@ -1022,6 +1022,31 @@ body {
   line-height: 1.5;
 }
 
+.behavior-thought {
+  position: absolute;
+  z-index: 22;
+  top: 16px;
+  left: 50%;
+  max-width: 170px;
+  transform: translateX(-50%);
+  padding: 7px 11px;
+  border: 1px solid rgba(239, 198, 213, 0.9);
+  border-radius: 14px;
+  background: rgba(255, 251, 253, 0.94);
+  box-shadow: 0 5px 15px rgba(117, 76, 94, 0.12);
+  color: #7a5a68;
+  font-size: 11px;
+  line-height: 1.4;
+  text-align: center;
+  pointer-events: none;
+  animation: behavior-thought-in 180ms ease-out;
+}
+
+@keyframes behavior-thought-in {
+  from { opacity: 0; transform: translate(-50%, 4px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+
 /* ---------- 小窝 ---------- */
 .nest-window {
   height: 100%;
@@ -1043,6 +1068,8 @@ body {
   justify-content: space-between;
   align-items: flex-start;
   flex: 0 0 auto;
+  cursor: move;
+  user-select: none;
 }
 
 .nest-kicker {
@@ -1217,6 +1244,242 @@ body {
   text-align: center;
   color: #b09da6;
   font-size: 10px;
+}
+
+/* v0.5：固定头部与页签，正文独立滚动，避免小窝底部再次被窗口裁掉。 */
+.nest-window {
+  padding: 22px 22px 14px;
+}
+
+.nest-header h1 {
+  font-size: 24px;
+}
+
+.nest-tabs {
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 5px;
+  margin-top: 16px;
+  padding: 4px;
+  border: 1px solid #f0dbe4;
+  border-radius: 13px;
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.nest-tabs button {
+  padding: 8px 4px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: #917a85;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.nest-tabs button.active {
+  background: #fff;
+  color: #c45f83;
+  box-shadow: 0 2px 8px rgba(124, 78, 96, 0.11);
+}
+
+.nest-content {
+  flex: 1 1 0;
+  min-height: 0;
+  margin-top: 14px;
+  padding-right: 4px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #e8bdcc transparent;
+}
+
+.nest-mood {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 4px 12px;
+  padding: 14px 16px;
+  border: 1px solid #efd5df;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #fff, #ffeaf1);
+}
+
+.nest-mood > span {
+  color: #a78b97;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .08em;
+}
+
+.nest-mood > strong {
+  grid-row: span 2;
+  align-self: center;
+  color: #bd5c80;
+  font-size: 19px;
+}
+
+.nest-mood > small {
+  color: #745e68;
+  font-size: 11px;
+}
+
+.nest-mood-blue { background: linear-gradient(135deg, #fff, #edf3ff); border-color: #dbe2f3; }
+.nest-mood-blue > strong { color: #7185b0; }
+.nest-mood-gold { background: linear-gradient(135deg, #fff, #fff3d9); border-color: #f1dfb8; }
+.nest-mood-gold > strong { color: #b8863f; }
+.nest-mood-mint { background: linear-gradient(135deg, #fff, #e8f7f0); border-color: #cce9dd; }
+.nest-mood-mint > strong { color: #5d9b82; }
+
+.nest-stats {
+  grid-template-columns: repeat(4, 1fr);
+  gap: 7px;
+  margin-top: 10px;
+}
+
+.nest-stat,
+.nest-stat-wide {
+  grid-column: auto;
+  min-height: 66px;
+  border-radius: 13px;
+}
+
+.nest-stat strong { font-size: 20px; }
+.nest-stat span { margin-top: 4px; font-size: 9px; }
+
+.nest-summary-strip {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 9px;
+  padding: 10px 13px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, .7);
+  color: #9a828d;
+  font-size: 10px;
+}
+
+.nest-summary-strip strong { color: #6e5661; font-size: 12px; }
+
+.nest-diary,
+.nest-weekly,
+.nest-recent {
+  margin-top: 18px;
+}
+
+.nest-weekly-card {
+  margin-top: 9px;
+  padding: 13px;
+  border: 1px solid #eadde3;
+  border-radius: 13px;
+  background: rgba(255, 255, 255, .72);
+}
+
+.nest-weekly-card small,
+.nest-weekly-card strong { display: block; }
+.nest-weekly-card small { color: #ab939f; font-size: 9px; }
+.nest-weekly-card strong { margin-top: 5px; color: #6a5360; font-size: 13px; }
+.nest-weekly-card p { margin: 6px 0 0; color: #806c76; font-size: 11px; line-height: 1.55; }
+
+.nest-recent .nest-timeline {
+  max-height: none;
+  overflow: visible;
+}
+
+.nest-page-intro {
+  padding: 2px 2px 12px;
+}
+
+.nest-page-intro strong { color: #6d5561; font-size: 15px; }
+.nest-page-intro p { margin: 5px 0 0; color: #9c8791; font-size: 11px; line-height: 1.6; }
+
+.nest-memory-grid {
+  display: grid;
+  gap: 9px;
+}
+
+.nest-memory-card {
+  display: flex;
+  gap: 12px;
+  padding: 13px;
+  border: 1px solid #eed5df;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, .82);
+}
+
+.nest-memory-card.locked {
+  border-style: dashed;
+  background: rgba(248, 244, 246, .72);
+  filter: saturate(.7);
+}
+
+.nest-memory-icon {
+  flex: 0 0 auto;
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: #fff1f6;
+  font-size: 20px;
+}
+
+.nest-memory-card strong { color: #674f5b; font-size: 12px; }
+.nest-memory-card p { margin: 5px 0; color: #8a747e; font-size: 10px; line-height: 1.55; }
+.nest-memory-card small { color: #c07c98; font-size: 9px; }
+
+.nest-keepsake-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.nest-keepsake {
+  min-height: 142px;
+  box-sizing: border-box;
+  padding: 13px;
+  border: 1px solid #edd7e0;
+  border-radius: 15px;
+  background: rgba(255, 255, 255, .82);
+}
+
+.nest-keepsake > span { display: block; font-size: 27px; }
+.nest-keepsake strong { display: block; margin-top: 7px; color: #664e5a; font-size: 12px; }
+.nest-keepsake p { margin: 5px 0; color: #8c7680; font-size: 10px; line-height: 1.5; }
+.nest-keepsake small { color: #b58e9e; font-size: 9px; }
+
+.nest-empty-card {
+  padding: 18px;
+  border: 1px dashed #e5cad5;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, .5);
+}
+
+.nest-data-card {
+  margin-top: 18px;
+  padding: 14px;
+  border: 1px solid #e5d8de;
+  border-radius: 15px;
+  background: rgba(255, 255, 255, .7);
+}
+
+.nest-data-card strong { color: #66525b; font-size: 12px; }
+.nest-data-card p { margin: 5px 0 10px; color: #8f7a83; font-size: 10px; line-height: 1.5; }
+.nest-data-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.nest-data-actions button {
+  padding: 9px 6px;
+  border: 1px solid #e5c7d2;
+  border-radius: 10px;
+  background: #fff7fa;
+  color: #a25270;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.nest-data-actions button:disabled { opacity: .55; cursor: wait; }
+.nest-backup-message { display: block; margin-top: 9px; color: #967c87; font-size: 9px; line-height: 1.5; word-break: break-all; }
+
+.nest-footer {
+  margin-top: 9px;
 }
 
 /* ---------- 开发期动作调参面板（Ctrl+Shift+D） ---------- */

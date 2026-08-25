@@ -61,6 +61,12 @@ export function PetApp() {
         followUp={controller.followUp}
       />
 
+      {!controller.bubble && controller.behaviorThought && (
+        <div className="behavior-thought" role="status">
+          {controller.behaviorThought}
+        </div>
+      )}
+
       <SleepZzz motion={controller.motion} />
 
       <MotionEffects motion={controller.motion} />

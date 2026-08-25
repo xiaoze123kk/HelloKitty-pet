@@ -360,7 +360,7 @@ export function SettingsPanel({
       </button>
 
       <div className="settings-footer">
-        KittyPet v0.2.0 · 完全离线运行，不上传任何数据
+        KittyPet v0.5.0 · 完全离线运行，不上传任何数据
       </div>
     </div>
   );

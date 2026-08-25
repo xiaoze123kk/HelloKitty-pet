@@ -29,7 +29,11 @@ const plan = (
   steps: [{ event, waitForAnimation: true }],
 });
 
-function buildPlan(id: BehaviorId, random: () => number): BehaviorPlan {
+function buildPlan(
+  id: BehaviorId,
+  random: () => number,
+  walkingEnabled: boolean,
+): BehaviorPlan {
   switch (id) {
     case "sleep":
       return {
@@ -65,10 +69,16 @@ function buildPlan(id: BehaviorId, random: () => number): BehaviorPlan {
       return {
         id,
         cooldownMs: 150_000,
-        steps: [
-          { event: { type: "IDLE_LOOK" }, waitForAnimation: true },
-          { event: { type: "IDLE_JUMP" }, waitForAnimation: true },
-        ],
+        steps: walkingEnabled
+          ? [
+              { event: { type: "IDLE_LOOK" }, waitForAnimation: true },
+              { event: { type: "WALK_START" }, durationMs: 8_000 },
+              { event: { type: "WALK_STOP" }, waitForAnimation: false },
+            ]
+          : [
+              { event: { type: "IDLE_LOOK" }, waitForAnimation: true },
+              { event: { type: "IDLE_JUMP" }, waitForAnimation: true },
+            ],
       };
     case "react_user":
       return plan(id, { type: "IDLE_LOOK" }, 30_000);
@@ -120,7 +130,9 @@ export function scoreBehaviors(input: BehaviorDecisionInput): Record<BehaviorId,
     explore:
       availability *
       (needs.curiosity * 0.5 + needs.boredom * 0.35 - userBusy * 0.3),
-    react_user: -1,
+    react_user:
+      availability *
+      (context.pointerActivity * 0.72 + needs.curiosity * 0.18 - interactionLoad * 0.12),
   };
 }
 
@@ -137,5 +149,5 @@ export function chooseBehavior(input: BehaviorDecisionInput): BehaviorPlan | nul
       winnerScore = score;
     }
   }
-  return winner ? buildPlan(winner, random) : null;
+  return winner ? buildPlan(winner, random, input.context.walkingEnabled) : null;
 }

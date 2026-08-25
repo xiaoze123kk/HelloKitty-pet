@@ -1,5 +1,6 @@
 import { chooseBehavior } from "./behaviorEngine";
 import type {
+  BehaviorId,
   BehaviorPlan,
   BehaviorSchedulerInput,
   BehaviorStep,
@@ -17,6 +18,7 @@ const STEP_TIMEOUT_MS = 5_000;
 export class BehaviorScheduler {
   private active: ActivePlan | null = null;
   private readonly cooldowns: Partial<Record<BehaviorPlan["id"], number>> = {};
+  private startedBehavior: BehaviorId | null = null;
 
   tick(input: BehaviorSchedulerInput): BehaviorStep | null {
     if (this.active) {
@@ -60,7 +62,14 @@ export class BehaviorScheduler {
       startedAt: input.context.now,
       waitingForAnimation: plan.steps[0]?.waitForAnimation !== false,
     };
+    this.startedBehavior = plan.id;
     return plan.steps[0] ?? null;
+  }
+
+  consumeStartedBehavior(): BehaviorId | null {
+    const started = this.startedBehavior;
+    this.startedBehavior = null;
+    return started;
   }
 
   onAnimationFinished(now: number): BehaviorStep | null {
@@ -70,10 +79,12 @@ export class BehaviorScheduler {
 
   cancel(): void {
     this.active = null;
+    this.startedBehavior = null;
   }
 
   reset(): void {
     this.active = null;
+    this.startedBehavior = null;
     for (const key of Object.keys(this.cooldowns)) delete this.cooldowns[key as keyof typeof this.cooldowns];
   }
 

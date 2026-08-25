@@ -1,9 +1,14 @@
-import { Component, type ErrorInfo, type ReactNode } from "react";
+import { Component, lazy, Suspense, type ErrorInfo, type ReactNode } from "react";
 import ReactDOM from "react-dom/client";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { PetApp } from "./app/PetApp";
-import { NestWindow } from "./components/NestWindow";
 import "./global.css";
+
+const PetApp = lazy(() =>
+  import("./app/PetApp").then((module) => ({ default: module.PetApp })),
+);
+const NestWindow = lazy(() =>
+  import("./components/NestWindow").then((module) => ({ default: module.NestWindow })),
+);
 
 function reportToRust(kind: string, message: string): void {
   try {
@@ -81,15 +86,22 @@ if (!root) {
 }
 
 // 注意：不使用 StrictMode，避免开发模式双挂载导致启动次数/触发计时被重复执行
-let isNestWindow = false;
-try {
-  isNestWindow = getCurrentWindow().label === "nest";
-} catch {
-  // 浏览器预览模式没有 Tauri 窗口元数据，默认渲染桌宠主界面。
+const isNestPreview =
+  import.meta.env.DEV &&
+  new URLSearchParams(window.location.search).has("nest-preview");
+let isNestWindow = isNestPreview;
+if (!isNestPreview) {
+  try {
+    isNestWindow = getCurrentWindow().label === "nest";
+  } catch {
+    // 浏览器预览模式没有 Tauri 窗口元数据，默认渲染桌宠主界面。
+  }
 }
 
 ReactDOM.createRoot(root).render(
   <PetErrorBoundary>
-    {isNestWindow ? <NestWindow /> : <PetApp />}
+    <Suspense fallback={null}>
+      {isNestWindow ? <NestWindow preview={isNestPreview} /> : <PetApp />}
+    </Suspense>
   </PetErrorBoundary>,
 );

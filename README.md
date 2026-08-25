@@ -9,6 +9,14 @@ v0.2 起 KittyPet 会记住陪伴关系：本地记录启动日期、互动习�
 打开「我们的小窝」查看相识天数、连续陪伴、今日互动和回忆时间线。关系记录仍只保存在本机，
 不读取前台应用内容，也不联网。
 
+v0.3–v0.4 起 KittyPet 拥有本地行为脑：精力、困意、社交期待、无聊和好奇心会驱动连续动作，
+并在重启后按离线时间温和演化。内部需求不会变成惩罚型数值条，也不会因为没有打开应用而生病
+或掉好感；它们只让作息和性格保持连续。
+
+v0.5 的「我们的小窝」分为今天、秘密和收藏三页：包含当前心情、每日记录、最近七天周记、
+10 段可解锁秘密与对应纪念物，并支持把关系、行为状态和设置备份到
+`文档/KittyPet Backups/`，或恢复最近一次备份。恢复前会自动再保存一份安全副本。
+
 **技术栈**：Tauri 2 · React 19 · TypeScript · Vite 7 · XState 5 · Tauri Store / Autostart 插件
 
 > ⚠️ 合规约定：本仓库只包含桌宠引擎和"示例私人内容"。昵称、纪念日、私人对白和角色素材
@@ -69,9 +77,11 @@ start-kittypet.bat -Mode Stop      # 只停止桌宠
 ```
 src/
   app/          PetApp + usePetController（编排层：随机调度 / 散步 / 撸猫）
+  behavior/     持久化需求、行为评分、行为链与调度器
+  relationship/关系事件、秘密目录、纪念物、日记与七日周记
   pet/          ProceduralAnimation / SpriteAnimation / InteractionArea / petMachine / animationManifest
   dialogue/     对白类型、引擎、触发调度、profile
-  components/   SpeechBubble / SleepZzz / Hearts / SettingsPanel
+  components/   SpeechBubble / SleepZzz / Hearts / SettingsPanel / NestWindow
   storage/      plugin-store 的 preferences / progress 封装
   platform/     窗口位置恢复、多屏钳制、散步步进
 scripts/
@@ -136,6 +146,12 @@ src-tauri/
 - 内容四层解锁：第 1–2 天日常 → 第 3–5 天称呼/习惯 → 第 5–10 天私人回忆 → 稀有彩蛋
 - 关系记忆：启动、摸头、戳身体、碰蝴蝶结、撸猫、拖拽和逗猫棒会形成本地回忆；久别重逢、
   互动习惯和连续陪伴会解锁不同对白。最近 100 条事件和最多 32 条秘密会被保留。
+- 自主生活：每 5 秒在合适的 idle 时机重新评分，支持观察、找你、洗脸、玩耍、探索、休息和
+  “打哈欠 → 入睡”等行为链；交互、提醒、设置和勿扰会正确取消或抑制自主行为。
+- 跨会话连续性：行为需求和最近 120 条自主活动保存在 `progress.json`；离线演化有舒适上限，
+  不设置饥饿、清洁、死亡或掉好感机制。
+- 小窝成长：秘密会保存解锁日期并带回纪念物；今日记录与七日周记同时总结用户互动和 Kitty
+  的自主生活。数据备份仍完全离线。
 
 ## 交付清单
 
@@ -143,6 +159,7 @@ src-tauri/
 - [x] 趣味动画六件套：随机小动作 / 入睡起床 / 拖拽落地 / 撸猫爱心 / 视线跟随 / 桌面散步（设置面板可逐个开关）
 - [x] 私人对白已替换为 50 条日常向原创文案（朋友/同事感，不暧昧；不使用无授权的第三方角色图片）
 - [x] `npm run tauri build`，从 `src-tauri/target/release/bundle/nsis/` 取 `KittyPet_*_x64-setup.exe`
+- [x] v0.5：跨会话行为状态、10 段秘密、10 件纪念物、七日周记、本地备份与恢复
 - [x] 本人电脑实测：置顶、拖拽、托盘、开机启动、100% DPI + 128% 文本缩放
 - [ ] 双屏 / 不同缩放比例屏幕组合待实机复测
 - [ ] 只私下发给收礼人（AirDrop / USB / 私密链接），不公开传播
