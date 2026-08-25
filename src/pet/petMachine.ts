@@ -1,7 +1,11 @@
 import { assign, setup } from "xstate";
 import type { DialogueDisplay } from "../dialogue/types";
+import type {
+  CompanionRitualKind,
+  HeadpatReaction,
+} from "../relationship/reactionEngine";
 import type { PetVisualMotion } from "./animationManifest";
-import type { PetTouchPart } from "./touchZones";
+import type { PetTouchTarget } from "./touchZones";
 
 export interface AnimationFlags {
   idleActions: boolean;
@@ -19,10 +23,21 @@ export interface PetContext {
   currentDialogue: DialogueDisplay | null;
   /** 趣味动画开关（设置面板 → SET_ANIMATION_PREFS 同步进来） */
   animations: AnimationFlags;
+  /** 最近一次单击摸头采用的关系反应。 */
+  headpatReaction: HeadpatReaction;
+  /** 当前正在播放的稀有陪伴仪式。 */
+  activeRitual: CompanionRitualKind | null;
+  /** 最近一次单击命中的精细部位，供有方向的局部动画与台词使用。 */
+  touchTarget: PetTouchTarget | null;
 }
 
 export type PetEvent =
-  | { type: "CLICK"; at: number; part?: PetTouchPart }
+  | {
+      type: "CLICK";
+      at: number;
+      target?: PetTouchTarget;
+      headpatReaction?: HeadpatReaction;
+    }
   | { type: "DRAG_START" }
   | { type: "DRAG_END" }
   | { type: "ANIMATION_FINISHED" }
@@ -50,6 +65,8 @@ export type PetEvent =
   | { type: "WALK_STOP" }
   | { type: "TEASE" }
   | { type: "POUNCE" }
+  | { type: "EDGE_PEEK" }
+  | { type: "PLAY_RITUAL"; ritual: CompanionRitualKind }
   | { type: "SET_ANIMATION_PREFS"; animations: AnimationFlags };
 
 const SLEEPY_TIMEOUT_MS = 8_000;
@@ -107,6 +124,23 @@ export const petMachine = setup({
         ? { animations: event.animations }
         : {},
     ),
+    setHeadpatReaction: assign({
+      headpatReaction: ({ context, event }) =>
+        event.type === "CLICK" && event.headpatReaction
+          ? event.headpatReaction
+          : context.headpatReaction,
+    }),
+    setActiveRitual: assign({
+      activeRitual: ({ event }) =>
+        event.type === "PLAY_RITUAL" ? event.ritual : null,
+    }),
+    clearActiveRitual: assign({ activeRitual: () => null }),
+    setTouchTarget: assign({
+      touchTarget: ({ context, event }) =>
+        event.type === "CLICK" && event.target
+          ? event.target
+          : context.touchTarget,
+    }),
   },
   guards: {
     isCrazyClick: ({ context, event }) =>
@@ -120,9 +154,28 @@ export const petMachine = setup({
       context.clickTimes.length > 0 &&
       event.at - context.clickTimes[context.clickTimes.length - 1] <=
         DOUBLE_CLICK_WINDOW_MS,
-    isHeadTouch: ({ event }) => event.type === "CLICK" && event.part === "head",
-    isBodyTouch: ({ event }) => event.type === "CLICK" && event.part === "body",
-    isBowTouch: ({ event }) => event.type === "CLICK" && event.part === "bow",
+    isForeheadTouch: ({ event }) =>
+      event.type === "CLICK" && event.target?.id === "forehead",
+    isNoseTouch: ({ event }) =>
+      event.type === "CLICK" && event.target?.id === "nose",
+    isAccessoryTouch: ({ event }) =>
+      event.type === "CLICK" && event.target?.id === "accessory",
+    isLowerFaceTouch: ({ event }) =>
+      event.type === "CLICK" && event.target?.id === "lower_face",
+    isBowTouch: ({ event }) =>
+      event.type === "CLICK" && event.target?.id === "bow",
+    isFaceTouch: ({ event }) =>
+      event.type === "CLICK" && event.target?.id === "face",
+    isEarTouch: ({ event }) =>
+      event.type === "CLICK" &&
+      (event.target?.id === "left_ear" || event.target?.id === "right_ear"),
+    isCheekTouch: ({ event }) =>
+      event.type === "CLICK" &&
+      (event.target?.id === "left_cheek" || event.target?.id === "right_cheek"),
+    isWhiskerTouch: ({ event }) =>
+      event.type === "CLICK" &&
+      (event.target?.id === "left_whiskers" ||
+        event.target?.id === "right_whiskers"),
     dialogueMovesHappy: ({ event }) =>
       event.type === "SHOW_DIALOGUE" &&
       (event.dialogue.motion === "happy" || event.dialogue.motion === "wave"),
@@ -135,6 +188,12 @@ export const petMachine = setup({
     dragEffectsOn: ({ context }) => context.animations.dragEffects,
     pettingOn: ({ context }) => context.animations.petting,
     teasingOn: ({ context }) => context.animations.teasing,
+    isReunionRitual: ({ event }) =>
+      event.type === "PLAY_RITUAL" && event.ritual === "reunion",
+    isStreakRitual: ({ event }) =>
+      event.type === "PLAY_RITUAL" && event.ritual === "streak",
+    isLateNightRitual: ({ event }) =>
+      event.type === "PLAY_RITUAL" && event.ritual === "late_night",
   },
 }).createMachine({
   id: "pet",
@@ -152,42 +211,75 @@ export const petMachine = setup({
       // 与 DEFAULT_ANIMATIONS 保持一致：散步默认关闭
       walking: false,
     },
+    headpatReaction: "soft",
+    activeRitual: null,
+    touchTarget: null,
   },
   on: {
     CLICK: [
       {
         guard: "isCrazyClick",
         target: "#pet.angry",
-        actions: "recordClick",
+        actions: ["recordClick", "setTouchTarget"],
       },
       {
         guard: "isRapidClick",
         target: "#pet.shy",
-        actions: "recordClick",
+        actions: ["recordClick", "setTouchTarget"],
       },
       {
         guard: "isDoubleClick",
         target: "#pet.happy",
-        actions: "recordClick",
+        actions: ["recordClick", "setTouchTarget"],
       },
       {
-        guard: "isHeadTouch",
+        guard: "isForeheadTouch",
         target: "#pet.headpat",
-        actions: "recordClick",
+        actions: ["recordClick", "setTouchTarget", "setHeadpatReaction"],
       },
       {
-        guard: "isBodyTouch",
+        guard: "isEarTouch",
+        target: "#pet.earTouch",
+        actions: ["recordClick", "setTouchTarget"],
+      },
+      {
+        guard: "isCheekTouch",
+        target: "#pet.cheekTouch",
+        actions: ["recordClick", "setTouchTarget"],
+      },
+      {
+        guard: "isNoseTouch",
+        target: "#pet.noseTouch",
+        actions: ["recordClick", "setTouchTarget"],
+      },
+      {
+        guard: "isWhiskerTouch",
+        target: "#pet.whiskerTouch",
+        actions: ["recordClick", "setTouchTarget"],
+      },
+      {
+        guard: "isAccessoryTouch",
+        target: "#pet.accessoryTouch",
+        actions: ["recordClick", "setTouchTarget"],
+      },
+      {
+        guard: "isLowerFaceTouch",
         target: "#pet.bodypat",
-        actions: "recordClick",
+        actions: ["recordClick", "setTouchTarget"],
       },
       {
         guard: "isBowTouch",
         target: "#pet.bowtouch",
-        actions: "recordClick",
+        actions: ["recordClick", "setTouchTarget"],
+      },
+      {
+        guard: "isFaceTouch",
+        target: "#pet.faceTouch",
+        actions: ["recordClick", "setTouchTarget"],
       },
       {
         target: "#pet.clicked",
-        actions: "recordClick",
+        actions: ["recordClick", "setTouchTarget"],
       },
     ],
     SHOW_DIALOGUE: [
@@ -261,6 +353,26 @@ export const petMachine = setup({
       {
         guard: "teasingOn",
         target: "#pet.pounce",
+      },
+    ],
+    EDGE_PEEK: {
+      target: "#pet.edgePeek",
+    },
+    PLAY_RITUAL: [
+      {
+        guard: "isReunionRitual",
+        target: "#pet.ritualReunion",
+        actions: "setActiveRitual",
+      },
+      {
+        guard: "isStreakRitual",
+        target: "#pet.ritualStreak",
+        actions: "setActiveRitual",
+      },
+      {
+        guard: "isLateNightRitual",
+        target: "#pet.ritualLateNight",
+        actions: "setActiveRitual",
       },
     ],
   },
@@ -527,6 +639,54 @@ export const petMachine = setup({
         ANIMATION_FINISHED: { target: "idle" },
       },
     },
+    earTouch: {
+      after: {
+        [ACTION_FALLBACK_MS]: { target: "idle" },
+      },
+      on: {
+        ANIMATION_FINISHED: { target: "idle" },
+      },
+    },
+    cheekTouch: {
+      after: {
+        [ACTION_FALLBACK_MS]: { target: "idle" },
+      },
+      on: {
+        ANIMATION_FINISHED: { target: "idle" },
+      },
+    },
+    noseTouch: {
+      after: {
+        [ACTION_FALLBACK_MS]: { target: "idle" },
+      },
+      on: {
+        ANIMATION_FINISHED: { target: "idle" },
+      },
+    },
+    whiskerTouch: {
+      after: {
+        [ACTION_FALLBACK_MS]: { target: "idle" },
+      },
+      on: {
+        ANIMATION_FINISHED: { target: "idle" },
+      },
+    },
+    faceTouch: {
+      after: {
+        [ACTION_FALLBACK_MS]: { target: "idle" },
+      },
+      on: {
+        ANIMATION_FINISHED: { target: "idle" },
+      },
+    },
+    accessoryTouch: {
+      after: {
+        [ACTION_FALLBACK_MS]: { target: "idle" },
+      },
+      on: {
+        ANIMATION_FINISHED: { target: "idle" },
+      },
+    },
     // ---------- 逗猫棒 ----------
     tease: {
       after: {
@@ -598,6 +758,41 @@ export const petMachine = setup({
     },
     petted: {},
     walking: {},
+    edgePeek: {
+      after: {
+        [ACTION_FALLBACK_MS]: { target: "idle" },
+      },
+      on: {
+        ANIMATION_FINISHED: { target: "idle" },
+      },
+    },
+    ritualReunion: {
+      exit: "clearActiveRitual",
+      after: {
+        5_000: { target: "idle" },
+      },
+      on: {
+        ANIMATION_FINISHED: { target: "idle" },
+      },
+    },
+    ritualStreak: {
+      exit: "clearActiveRitual",
+      after: {
+        5_000: { target: "idle" },
+      },
+      on: {
+        ANIMATION_FINISHED: { target: "idle" },
+      },
+    },
+    ritualLateNight: {
+      exit: "clearActiveRitual",
+      after: {
+        5_000: { target: "idle" },
+      },
+      on: {
+        ANIMATION_FINISHED: { target: "idle" },
+      },
+    },
   },
 });
 
@@ -673,6 +868,18 @@ export function stateToMotion(stateValue: unknown): PetVisualMotion {
       return "bodypat";
     case "bowtouch":
       return "bowtouch";
+    case "earTouch":
+      return "earTouch";
+    case "cheekTouch":
+      return "cheekTouch";
+    case "noseTouch":
+      return "noseBoop";
+    case "whiskerTouch":
+      return "whiskerTouch";
+    case "faceTouch":
+      return "faceTouch";
+    case "accessoryTouch":
+      return "accessoryTouch";
     case "tease":
       return "tease";
     case "pounce":
@@ -703,6 +910,14 @@ export function stateToMotion(stateValue: unknown): PetVisualMotion {
       return "petted";
     case "walking":
       return "walk";
+    case "edgePeek":
+      return "edgePeek";
+    case "ritualReunion":
+      return "reunion";
+    case "ritualStreak":
+      return "celebrate";
+    case "ritualLateNight":
+      return "moonGreeting";
     default:
       return "idle";
   }

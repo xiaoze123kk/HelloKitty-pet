@@ -3,13 +3,18 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 
 const appWindow = getCurrentWindow();
 
-import { classifyTouchPart, type PetTouchPart } from "./touchZones";
+import {
+  classifyTouchTarget,
+  type AccessoryHitRegion,
+  type PetTouchTarget,
+} from "./touchZones";
 
 interface InteractionAreaProps {
   children: ReactNode;
   disabled?: boolean;
+  accessoryHitRegion?: AccessoryHitRegion | null;
   /** 普通点击（未触发长按/拖拽），附带点击部位 */
-  onClick: (part: PetTouchPart) => void;
+  onClick: (target: PetTouchTarget) => void;
   onDragStart: () => void;
   onDragEnd: () => void;
   onOpenSettings: () => void;
@@ -37,6 +42,7 @@ const HOLD_THRESHOLD_MS = 650;
 export function InteractionArea({
   children,
   disabled,
+  accessoryHitRegion,
   onClick,
   onDragStart,
   onDragEnd,
@@ -197,14 +203,15 @@ export function InteractionArea({
     }
     downRef.current = null;
     const rect = areaRef.current?.getBoundingClientRect();
-    const part =
+    const target =
       rect && rect.width > 0 && rect.height > 0
-        ? classifyTouchPart(
+        ? classifyTouchTarget(
             ((event.clientX - rect.left) / rect.width) * 240,
             ((event.clientY - rect.top) / rect.height) * 240,
+            accessoryHitRegion,
           )
-        : "head";
-    onClickRef.current(part);
+        : ({ id: "face" } as const);
+    onClickRef.current(target);
   }
 
   function handlePointerCancel() {

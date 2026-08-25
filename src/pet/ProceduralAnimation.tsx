@@ -28,6 +28,23 @@ interface ProceduralAnimationProps {
   onFinished?: () => void;
   /** 视线跟随：整个身体朝鼠标方向轻微转头/倾斜 */
   gazeFollow?: boolean;
+  /** 将主体关键帧同步给配饰和面部独立层。 */
+  onPose?: (pose: MotionKeyframe) => void;
+}
+
+type BlinkFrame = "open" | "half" | "closed";
+
+function usePrefersReducedMotion(): boolean {
+  const [reduced, setReduced] = useState(
+    () => window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+  );
+  useEffect(() => {
+    const query = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const update = () => setReduced(query.matches);
+    query.addEventListener("change", update);
+    return () => query.removeEventListener("change", update);
+  }, []);
+  return reduced;
 }
 
 const imageCache = new Map<string, Promise<HTMLImageElement>>();
@@ -76,14 +93,20 @@ function loadImageIfExists(src: string): Promise<HTMLImageElement | null> {
 async function resolveMotionAssets(
   specKey: string,
   spec: ProceduralMotionSpec,
-): Promise<{ base: HTMLImageElement | null; blink: HTMLImageElement | null }> {
+): Promise<{
+  base: HTMLImageElement | null;
+  half: HTMLImageElement | null;
+  blink: HTMLImageElement | null;
+}> {
   const overrideBase = await loadImageIfExists(stateBaseOverrideUrl(specKey));
   const base =
     overrideBase ??
     (await loadImage(EXPRESSION_URLS[spec.base]).catch(() => null));
 
+  let half: HTMLImageElement | null = null;
   let blink: HTMLImageElement | null = null;
   if (spec.blink) {
+    half = await loadImage(EXPRESSION_URLS.half).catch(() => null);
     const overrideBlink = await loadImageIfExists(
       stateBlinkOverrideUrl(specKey),
     );
@@ -91,7 +114,7 @@ async function resolveMotionAssets(
       overrideBlink ??
       (await loadImage(EXPRESSION_URLS.closed).catch(() => null));
   }
-  return { base, blink };
+  return { base, half, blink };
 }
 
 /**
@@ -107,9 +130,11 @@ export function ProceduralAnimation({
   zoom,
   onFinished,
   gazeFollow = false,
+  onPose,
 }: ProceduralAnimationProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const baseImageRef = useRef<HTMLImageElement | null>(null);
+  const halfImageRef = useRef<HTMLImageElement | null>(null);
   const blinkImageRef = useRef<HTMLImageElement | null>(null);
   /**
    * 已加载完成的动作名（不是布尔值）：
@@ -122,18 +147,21 @@ export function ProceduralAnimation({
   const [specRevision, setSpecRevision] = useState(0);
 
   const ready = loadedSpecKey === getSpecKey(motion);
+  const reducedMotion = usePrefersReducedMotion();
 
   const motionRef = useRef(motion);
   const zoomRef = useRef(zoom);
-  const blinkUntilRef = useRef(0);
+  const blinkFrameRef = useRef<BlinkFrame>("open");
   const onFinishedRef = useRef(onFinished);
+  const onPoseRef = useRef(onPose);
   motionRef.current = motion;
   zoomRef.current = zoom;
   onFinishedRef.current = onFinished;
+  onPoseRef.current = onPose;
 
   // 视线跟随：用 CSS transform 微调画布，不触发重绘
   useEffect(() => {
-    if (!gazeFollow || !ready) return;
+    if (!gazeFollow || !ready || reducedMotion) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
 
@@ -161,9 +189,10 @@ export function ProceduralAnimation({
       window.removeEventListener("pointerout", onOut);
       reset();
     };
-  }, [gazeFollow, ready]);
+  }, [gazeFollow, ready, reducedMotion]);
 
   const drawPose = (keyframe: MotionKeyframe) => {
+    onPoseRef.current?.(keyframe);
     const canvas = canvasRef.current;
     const base = baseImageRef.current;
     if (!canvas || !base) return;
@@ -172,10 +201,12 @@ export function ProceduralAnimation({
 
     const size = canvas.width;
     const scaleToCanvas = size / CANVAS_BASE_SIZE;
-    const useBlink =
-      blinkUntilRef.current > performance.now() &&
-      blinkImageRef.current !== null;
-    const image = useBlink ? blinkImageRef.current : base;
+    const image =
+      blinkFrameRef.current === "closed"
+        ? (blinkImageRef.current ?? base)
+        : blinkFrameRef.current === "half"
+          ? (halfImageRef.current ?? blinkImageRef.current ?? base)
+          : base;
     if (!image) return;
 
     ctx.clearRect(0, 0, size, size);
@@ -201,14 +232,16 @@ export function ProceduralAnimation({
     setLoadedSpecKey(null);
     setBlinkReady(false);
     baseImageRef.current = null;
+    halfImageRef.current = null;
     blinkImageRef.current = null;
-    blinkUntilRef.current = 0;
+    blinkFrameRef.current = "open";
 
     const specKey = getSpecKey(motion);
     const spec = getMotionSpec(motion);
-    resolveMotionAssets(specKey, spec).then(({ base, blink }) => {
+    resolveMotionAssets(specKey, spec).then(({ base, half, blink }) => {
       if (disposed) return;
       baseImageRef.current = base;
+      halfImageRef.current = half;
       blinkImageRef.current = blink;
       setBlinkReady(blink !== null);
       if (!base) return;
@@ -242,6 +275,15 @@ export function ProceduralAnimation({
     const frameMs = Math.max(16, 1000 / fps);
     const totalMs = spec.keyframes.length * frameMs;
     const lastIndex = Math.max(spec.keyframes.length - 1, 0);
+
+    if (reducedMotion) {
+      drawPose(spec.keyframes[0]);
+      if (!spec.loop) {
+        const timer = window.setTimeout(() => onFinishedRef.current?.(), 0);
+        return () => window.clearTimeout(timer);
+      }
+      return;
+    }
 
     const tick = (now: number) => {
       const elapsed = now - start;
@@ -296,46 +338,60 @@ export function ProceduralAnimation({
 
     return () => {
       cancelAnimationFrame(raf);
-      blinkUntilRef.current = 0;
+      blinkFrameRef.current = "open";
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [motion, loadedSpecKey, specRevision]);
+  }, [motion, loadedSpecKey, specRevision, reducedMotion]);
 
   // ---------- 随机眨眼调度 ----------
   useEffect(() => {
-    if (loadedSpecKey !== getSpecKey(motion) || !blinkReady) return;
+    if (loadedSpecKey !== getSpecKey(motion) || !blinkReady || reducedMotion) return;
     const spec = getMotionSpec(motion);
-    blinkUntilRef.current = 0;
+    blinkFrameRef.current = "open";
     if (!spec.blink || !blinkImageRef.current) return;
 
-    const timers: number[] = [];
+    const timers = new Set<number>();
     const randomDelay = () =>
       BLINK_SCHEDULE.minIntervalMs +
       Math.random() *
         (BLINK_SCHEDULE.maxIntervalMs - BLINK_SCHEDULE.minIntervalMs);
 
-    const schedule = (delayMs: number) => {
-      const openTimer = window.setTimeout(() => {
-        blinkUntilRef.current = performance.now() + BLINK_SCHEDULE.holdMs;
+    const setFrameLater = (delayMs: number, frame: BlinkFrame, next?: () => void) => {
+      const timer = window.setTimeout(() => {
+        timers.delete(timer);
+        blinkFrameRef.current = frame;
         drawPose(spec.keyframes[0]);
-        timers.push(
-          window.setTimeout(() => {
-            blinkUntilRef.current = 0;
-            drawPose(spec.keyframes[0]);
-            schedule(randomDelay());
-          }, BLINK_SCHEDULE.holdMs),
-        );
+        next?.();
       }, delayMs);
-      timers.push(openTimer);
+      timers.add(timer);
+    };
+    const blinkOnce = (delayMs: number, done: () => void) => {
+      setFrameLater(delayMs, "half", () => {
+        setFrameLater(45, "closed", () => {
+          setFrameLater(Math.max(60, BLINK_SCHEDULE.holdMs / 2), "half", () => {
+            setFrameLater(55, "open", done);
+          });
+        });
+      });
+    };
+    const schedule = (delayMs: number) => {
+      blinkOnce(delayMs, () => {
+        if (Math.random() < 0.2) {
+          blinkOnce(115, () => schedule(randomDelay()));
+        } else {
+          schedule(randomDelay());
+        }
+      });
     };
 
     schedule(randomDelay());
     return () => {
       for (const timer of timers) window.clearTimeout(timer);
-      blinkUntilRef.current = 0;
+      timers.clear();
+      blinkFrameRef.current = "open";
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [motion, loadedSpecKey, blinkReady, specRevision]);
+  }, [motion, loadedSpecKey, blinkReady, specRevision, reducedMotion]);
 
   // ---------- 缩放 / DPI 变化时重建背板 ----------
   useEffect(() => {
@@ -369,6 +425,7 @@ export function ProceduralAnimation({
     return (
       <SpriteAnimation
         config={petMotions[motion]}
+        reducedMotion={reducedMotion}
         onFinished={onFinished}
       />
     );

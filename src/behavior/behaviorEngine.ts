@@ -32,7 +32,7 @@ const plan = (
 function buildPlan(
   id: BehaviorId,
   random: () => number,
-  walkingEnabled: boolean,
+  input: BehaviorDecisionInput,
 ): BehaviorPlan {
   switch (id) {
     case "sleep":
@@ -54,7 +54,16 @@ function buildPlan(
         cooldownMs: 90_000,
         steps: [
           { event: { type: "IDLE_LOOK" }, waitForAnimation: true },
-          { event: { type: "IDLE_PEEK" }, waitForAnimation: true },
+          {
+            event: {
+              type:
+                input.relationship.daysTogether >= 3 &&
+                input.context.pointerIdleSeconds >= 75
+                  ? "EDGE_PEEK"
+                  : "IDLE_PEEK",
+            },
+            waitForAnimation: true,
+          },
         ],
       };
     case "groom":
@@ -69,7 +78,7 @@ function buildPlan(
       return {
         id,
         cooldownMs: 150_000,
-        steps: walkingEnabled
+        steps: input.context.walkingEnabled
           ? [
               { event: { type: "IDLE_LOOK" }, waitForAnimation: true },
               { event: { type: "WALK_START" }, durationMs: 8_000 },
@@ -149,5 +158,5 @@ export function chooseBehavior(input: BehaviorDecisionInput): BehaviorPlan | nul
       winnerScore = score;
     }
   }
-  return winner ? buildPlan(winner, random, input.context.walkingEnabled) : null;
+  return winner ? buildPlan(winner, random, input) : null;
 }

@@ -30,8 +30,23 @@ import {
   dateKey,
 } from "../dialogue/triggers";
 import type { DialogueDisplay, TriggerContext } from "../dialogue/types";
+import {
+  isAccessoryUnlocked,
+  normalizeAccessoryId,
+  wardrobeSnapshot,
+  type AccessoryId,
+} from "../growth/wardrobe";
+import {
+  createUserMemory,
+  MAX_USER_MEMORIES,
+  type UserMemoryKind,
+} from "../memory/userMemory";
+import type { NestSnapshot } from "../nest/types";
 import type { PetVisualMotion } from "../pet/animationManifest";
-import type { PetTouchPart } from "../pet/touchZones";
+import type {
+  PetTouchTarget,
+  PetTouchTargetId,
+} from "../pet/touchZones";
 import {
   CRAZY_CLICK_THRESHOLD,
   idleSubState,
@@ -43,14 +58,18 @@ import {
 import {
   appWindow,
   applyAlwaysOnTop,
+  beginEdgePeek,
   chaseStep,
+  finishEdgePeek,
   keepWindowOnScreen,
   restorePosition,
   savePositionToPrefs,
   setWindowScale,
   syncWindowSizeToViewport,
   walkStep,
+  type EdgePeekSession,
 } from "../platform/window";
+import type { PeekEdge } from "../platform/edgePeek";
 import {
   clampScale,
   DEFAULT_SCALE,
@@ -81,9 +100,20 @@ import {
   unlockEligibleMemories,
   type RelationshipEventType,
 } from "../relationship/relationshipEngine";
+import {
+  chooseHeadpatReaction,
+  chooseStartupRitual,
+  markRitualShown,
+  type CompanionRitual,
+  type HeadpatReaction,
+} from "../relationship/reactionEngine";
 
 type PetActor = Actor<typeof petMachine>;
 type PetSnapshot = SnapshotFrom<typeof petMachine>;
+
+type UserMemoryRequest =
+  | { action: "add"; kind: UserMemoryKind; text: string }
+  | { action: "delete"; id: string };
 
 const TICK_INTERVAL_MS = 30_000;
 /** 陪伴提醒检查频率：20 秒一次，错过整点最多延迟 20 秒 */
@@ -132,11 +162,37 @@ const BEHAVIOR_THOUGHTS: Partial<Record<BehaviorId, string>> = {
   explore: "去旁边看看。",
 };
 
-const HEAD_TOUCH_LINES = [
-  "摸摸头好舒服~",
-  "呼噜呼噜，喜欢这样",
-  "再摸一下也可以哦",
-];
+const HEAD_TOUCH_LINES: Record<HeadpatReaction, string[]> = {
+  shy: ["轻一点点…我还在认识你。", "唔，先让我熟悉一下你的手。"],
+  soft: ["摸摸头好舒服~", "呼噜呼噜，喜欢这样", "再摸一下也可以哦"],
+  nuzzle: ["你一伸手，我就知道是你。", "再靠近一点也没关系。", "这个位置最熟悉啦。"],
+  reunion: ["好久没摸到这个熟悉的手啦。", "你回来以后，摸头也变得特别安心。"],
+};
+
+function ritualDialogue(ritual: CompanionRitual): DialogueDisplay {
+  if (ritual.kind === "reunion") {
+    return {
+      id: `ritual_${ritual.key}`,
+      text: `你离开了 ${ritual.value} 天，我刚才还愣了一下。欢迎回来。`,
+      emotion: "happy",
+      motion: "idle",
+    };
+  }
+  if (ritual.kind === "streak") {
+    return {
+      id: `ritual_${ritual.key}`,
+      text: `这是我们连续见面的第 ${ritual.value} 天，我有认真数。`,
+      emotion: "happy",
+      motion: "idle",
+    };
+  }
+  return {
+    id: `ritual_${ritual.key}`,
+    text: "夜已经很深啦。我陪你安静待一会儿，然后我们都早点休息。",
+    emotion: "neutral",
+    motion: "idle",
+  };
+}
 
 const BODY_TOUCH_LINES = [
   "肚皮不可以乱戳啦",
@@ -149,6 +205,28 @@ const BOW_TOUCH_LINES = [
   "蝴蝶结今天也很漂亮吧？",
   "这个蝴蝶结要轻一点摸哦",
 ];
+
+const LOCAL_TOUCH_LINES: Partial<Record<PetTouchTargetId, string[]>> = {
+  left_ear: ["左耳朵听见你啦。", "这里会痒，轻一点点。"],
+  right_ear: ["右耳朵也有认真听。", "耳朵被你碰得抖了一下。"],
+  left_cheek: ["这边脸颊软软的。", "左边也要揉一下吗？"],
+  right_cheek: ["右边脸颊也被发现啦。", "脸颊被戳出一个小窝。"],
+  nose: ["鼻子被按到啦！", "唔——差一点就要打喷嚏。"],
+  left_whiskers: ["左边胡须会感到痒。", "胡须乱了，要帮我理好吗？"],
+  right_whiskers: ["右边胡须抖了一下。", "不要一直拨我的胡须嘛。"],
+  face: ["你在认真看我的脸吗？", "好近，我都看见你啦。"],
+  lower_face: BODY_TOUCH_LINES,
+  bow: BOW_TOUCH_LINES,
+};
+
+const ACCESSORY_TOUCH_LINES: Record<AccessoryId, string[]> = {
+  paw_badge: ["爪印被你按亮啦。", "这是第一次回应留下的小徽章。"],
+  cloud_clip: ["云朵轻轻晃了一下。", "摸起来是不是软软的？"],
+  calendar_pin: ["这是我们一起数过的日子。", "别针把连续见面的日期别好啦。"],
+  moon_cap: ["睡帽歪了一点点。", "碰到睡帽，我又有点困啦。"],
+  ribbon_scarf: ["围巾被你整理好啦。", "缎带轻轻飘了一下。"],
+  golden_bell: ["叮——只有你碰得到。", "铃铛记得这一次轻响。"],
+};
 
 export interface PetController {
   /** 状态机当前动作（驱动程序化动画 / sheet 兜底） */
@@ -168,13 +246,21 @@ export interface PetController {
   animationPrefs: AnimationPreferences;
   /** 陪伴提醒开关与节奏 */
   reminderPrefs: ReminderPreferences;
+  /** 当前穿戴的头部装扮。 */
+  selectedAccessoryId: AccessoryId | null;
+  /** 最近一次摸头由关系阶段决定的反应。 */
+  headpatReaction: HeadpatReaction;
+  /** 探头时所在的真实屏幕边缘。 */
+  edgePeekSide: PeekEdge | null;
+  /** 最近一次点击命中的精细部位。 */
+  touchTarget: PetTouchTarget | null;
   /** 长按撸猫时是否显示爱心粒子 */
   hearts: boolean;
   /** 初始化或渲染期致命错误（用于在透明窗口里显示出来，避免"隐形窗口"） */
   fatal: string | null;
   openSettings: () => void;
   closeSettings: () => void;
-  onPetClick: (part: PetTouchPart) => void;
+  onPetClick: (target: PetTouchTarget) => void;
   onPetDragStart: () => void;
   onPetDragEnd: () => void;
   onAnimationFinished: () => void;
@@ -231,6 +317,9 @@ export function usePetController(): PetController {
     useState<AnimationPreferences>(DEFAULT_ANIMATIONS);
   const [reminderPrefs, setReminderPrefsState] =
     useState<ReminderPreferences>(DEFAULT_REMINDERS);
+  const [selectedAccessoryId, setSelectedAccessoryId] =
+    useState<AccessoryId | null>(null);
+  const [edgePeekSide, setEdgePeekSide] = useState<PeekEdge | null>(null);
   const [hearts, setHearts] = useState(false);
   const [fatal, setFatal] = useState<string | null>(null);
 
@@ -243,6 +332,7 @@ export function usePetController(): PetController {
     scale: DEFAULT_SCALE,
     animations: DEFAULT_ANIMATIONS,
     reminders: DEFAULT_REMINDERS,
+    wardrobe: { selectedAccessoryId: null },
   });
   const scaleRef = useRef(DEFAULT_SCALE);
   /** 串行化窗口缩放：滚轮/滑杆可能连续触发，避免 setSize 乱序 */
@@ -298,6 +388,10 @@ export function usePetController(): PetController {
   const walkingReadyRef = useRef(false);
   const progressSaveTimerRef = useRef<number | undefined>(undefined);
   const pendingRelationshipDialogsRef = useRef<TriggerContext[]>([]);
+  const sessionAbsenceDaysRef = useRef(0);
+  const reunionHeadpatPendingRef = useRef(false);
+  const edgePeekSessionRef = useRef<EdgePeekSession | null>(null);
+  const programmaticWindowMoveRef = useRef(false);
 
   const behaviorContext = useCallback((now = Date.now()): ContextSnapshot => {
     const progress = progressRef.current;
@@ -324,19 +418,50 @@ export function usePetController(): PetController {
   const behaviorContextRef = useRef(behaviorContext);
   behaviorContextRef.current = behaviorContext;
 
-  const dispatchBehaviorStep = useCallback((step: BehaviorStep | null): void => {
-    if (!step) return;
-    if (import.meta.env.DEV) {
-      console.debug("[behavior]", step.event.type);
-    }
-    actor.send(step.event);
-  }, [actor]);
+  const dispatchBehaviorStep = useCallback(
+    (step: BehaviorStep | null): void => {
+      if (!step) return;
+      if (import.meta.env.DEV) {
+        console.debug("[behavior]", step.event.type);
+      }
+      if (step.event.type === "EDGE_PEEK") {
+        programmaticWindowMoveRef.current = true;
+        void beginEdgePeek()
+          .then((session) => {
+            if (!session) {
+              programmaticWindowMoveRef.current = false;
+              actor.send({ type: "IDLE_PEEK" });
+              return;
+            }
+            edgePeekSessionRef.current = session;
+            setEdgePeekSide(session.edge);
+            actor.send(step.event);
+          })
+          .catch((error) => {
+            programmaticWindowMoveRef.current = false;
+            console.error("begin edge peek failed:", error);
+            actor.send({ type: "IDLE_PEEK" });
+          });
+        return;
+      }
+      actor.send(step.event);
+    },
+    [actor],
+  );
   const dispatchBehaviorStepRef = useRef(dispatchBehaviorStep);
   dispatchBehaviorStepRef.current = dispatchBehaviorStep;
 
   const emitNestSnapshot = useCallback((progress = progressRef.current) => {
     if (!progress) return;
-    void emitTo("nest", "relationship-snapshot", snapshotRelationship(progress)).catch(
+    const nestSnapshot: NestSnapshot = {
+      ...snapshotRelationship(progress),
+      wardrobe: wardrobeSnapshot(
+        progress.relationship.unlockedMemories,
+        prefsRef.current.wardrobe.selectedAccessoryId,
+      ),
+      userMemories: progress.userMemories,
+    };
+    void emitTo("nest", "relationship-snapshot", nestSnapshot).catch(
       () => undefined,
     );
   }, []);
@@ -734,6 +859,16 @@ export function usePetController(): PetController {
       setSnapshot(snap);
 
       if (currentState !== previous) {
+        if (previous === "edgePeek" && currentState !== "edgePeek") {
+          const session = edgePeekSessionRef.current;
+          edgePeekSessionRef.current = null;
+          if (session) {
+            void finishEdgePeek(session).finally(() => {
+              programmaticWindowMoveRef.current = false;
+              setEdgePeekSide(null);
+            });
+          }
+        }
         const pendingRelationshipDialogue = pendingRelationshipDialogsRef.current.shift();
         if (pendingRelationshipDialogue && tryShowRef.current(pendingRelationshipDialogue)) {
           // 关系记忆优先于本次的普通互动台词。
@@ -755,11 +890,35 @@ export function usePetController(): PetController {
             count: Math.max(count, CRAZY_CLICK_THRESHOLD),
           });
         } else if (currentState === "headpat") {
-          showTouchLineRef.current("system_headpat", HEAD_TOUCH_LINES);
+          const reaction = snap.context.headpatReaction;
+          showTouchLineRef.current(
+            `system_headpat_${reaction}`,
+            HEAD_TOUCH_LINES[reaction],
+          );
         } else if (currentState === "bodypat") {
           showTouchLineRef.current("system_bodypat", BODY_TOUCH_LINES);
         } else if (currentState === "bowtouch") {
           showTouchLineRef.current("system_bowtouch", BOW_TOUCH_LINES);
+        } else if (
+          currentState === "earTouch" ||
+          currentState === "cheekTouch" ||
+          currentState === "noseBoop" ||
+          currentState === "whiskerTouch" ||
+          currentState === "faceTouch"
+        ) {
+          const target = snap.context.touchTarget;
+          const lines = target ? LOCAL_TOUCH_LINES[target.id] : undefined;
+          if (target && lines) {
+            showTouchLineRef.current(`system_touch_${target.id}`, lines);
+          }
+        } else if (currentState === "accessoryTouch") {
+          const accessoryId = snap.context.touchTarget?.accessoryId;
+          if (accessoryId) {
+            showTouchLineRef.current(
+              `system_accessory_${accessoryId}`,
+              ACCESSORY_TOUCH_LINES[accessoryId],
+            );
+          }
         }
       }
 
@@ -869,6 +1028,8 @@ export function usePetController(): PetController {
       behaviorNeedsAtRef.current = now;
       lastBehaviorPersistAtRef.current = now;
       const relationshipBeforeSession = relationshipContext(progress, now);
+      sessionAbsenceDaysRef.current = relationshipBeforeSession.absenceDays;
+      reunionHeadpatPendingRef.current = relationshipBeforeSession.absenceDays >= 2;
       progress.launchCount += 1;
       if (!progress.firstLaunchAt) {
         progress.firstLaunchAt = new Date(now).toISOString();
@@ -878,10 +1039,30 @@ export function usePetController(): PetController {
       }
       progress.sessionStart = now;
       recordEvent(progress.relationship, "session_start", now);
+      const relationshipAfterSession = relationshipContext(progress, now);
+      const startupRitual = chooseStartupRitual({
+        now,
+        absenceDays: relationshipBeforeSession.absenceDays,
+        consecutiveDays: relationshipAfterSession.streak,
+        daysTogether: relationshipAfterSession.daysTogether,
+        shownKeys: progress.rituals.shownKeys,
+      });
       const startupMemories = unlockEligibleMemories(progress.relationship, now);
       for (const memoryId of startupMemories) {
         pendingRelationshipDialogsRef.current.push({ type: "memoryUnlocked", memoryId });
       }
+      const loadedAccessory = prefsLoaded.prefs.wardrobe.selectedAccessoryId;
+      if (
+        loadedAccessory &&
+        !isAccessoryUnlocked(
+          loadedAccessory,
+          progress.relationship.unlockedMemories,
+        )
+      ) {
+        prefsLoaded.prefs.wardrobe.selectedAccessoryId = null;
+        await savePreferences(prefsLoaded.store, prefsLoaded.prefs);
+      }
+      setSelectedAccessoryId(prefsLoaded.prefs.wardrobe.selectedAccessoryId);
       progressStoreRef.current = progressLoaded.store;
       progressRef.current = progress;
       installedAtRef.current = new Date(progress.firstLaunchAt);
@@ -923,6 +1104,107 @@ export function usePetController(): PetController {
       });
       unlisteners.push(unNestSnapshotRequest);
 
+      const unWardrobeSelection = await listen<AccessoryId | null>(
+        "wardrobe-selection-request",
+        (event) => {
+          void (async () => {
+            try {
+              const progress = progressRef.current;
+              const normalized = normalizeAccessoryId(event.payload);
+              if (event.payload !== null && normalized === null) {
+                throw new Error("这件装扮不存在。");
+              }
+              if (
+                normalized &&
+                (!progress ||
+                  !isAccessoryUnlocked(
+                    normalized,
+                    progress.relationship.unlockedMemories,
+                  ))
+              ) {
+                throw new Error("这件装扮还没有解锁。");
+              }
+              prefsRef.current.wardrobe.selectedAccessoryId = normalized;
+              setSelectedAccessoryId(normalized);
+              if (normalized && !settingsOpenRef.current) {
+                behaviorSchedulerRef.current.cancel();
+                const welcomeEvent =
+                  normalized === "moon_cap"
+                    ? ({ type: "IDLE_YAWN" } as const)
+                    : normalized === "golden_bell" || normalized === "ribbon_scarf"
+                      ? ({ type: "IDLE_SWAY" } as const)
+                      : normalized === "calendar_pin"
+                        ? ({ type: "IDLE_JUMP" } as const)
+                        : normalized === "paw_badge"
+                          ? ({ type: "IDLE_NOD" } as const)
+                          : ({ type: "IDLE_BOW" } as const);
+                actor.send(welcomeEvent);
+              }
+              if (prefsStoreRef.current) {
+                await savePreferences(prefsStoreRef.current, prefsRef.current);
+              }
+              emitNestSnapshotRef.current();
+              await emitTo("nest", "wardrobe-selection-result", {
+                ok: true,
+                message: normalized ? "Kitty 已经戴好啦。" : "Kitty 暂时不戴装扮。",
+              });
+            } catch (error) {
+              await emitTo("nest", "wardrobe-selection-result", {
+                ok: false,
+                message: String(error),
+              }).catch(() => undefined);
+            }
+          })();
+        },
+      );
+      unlisteners.push(unWardrobeSelection);
+
+      const unUserMemoryRequest = await listen<UserMemoryRequest>(
+        "user-memory-request",
+        (event) => {
+          const request = event.payload;
+          void (async () => {
+            try {
+              const progress = progressRef.current;
+              const store = progressStoreRef.current;
+              if (!progress || !store) throw new Error("关系记录还没有准备好。");
+              if (request.action === "add") {
+                if (progress.userMemories.length >= MAX_USER_MEMORIES) {
+                  throw new Error(`最多保存 ${MAX_USER_MEMORIES} 条，请先删除一条旧记忆。`);
+                }
+                progress.userMemories = [
+                  createUserMemory(request.kind, request.text),
+                  ...progress.userMemories,
+                ];
+              } else {
+                const before = progress.userMemories.length;
+                progress.userMemories = progress.userMemories.filter(
+                  (item) => item.id !== request.id,
+                );
+                if (before === progress.userMemories.length) {
+                  throw new Error("没有找到这条记忆。");
+                }
+              }
+              await saveProgress(store, progress);
+              emitNestSnapshotRef.current(progress);
+              await emitTo("nest", "user-memory-result", {
+                ok: true,
+                message:
+                  request.action === "add"
+                    ? "好，我会记住这件事。"
+                    : "这条记忆已经删除。",
+              });
+            } catch (error) {
+              await emitTo("nest", "user-memory-result", {
+                ok: false,
+                message: String(error),
+              }).catch(() => undefined);
+            }
+          })();
+        },
+      );
+      unlisteners.push(unUserMemoryRequest);
+
       const unBackupRequest = await listen<"create" | "restore">(
         "data-backup-request",
         (event) => {
@@ -963,6 +1245,7 @@ export function usePetController(): PetController {
       unlisteners.push(unBackupRequest);
 
       const unMoved = await appWindow.onMoved(() => {
+        if (programmaticWindowMoveRef.current) return;
         if (positionSaveTimer !== undefined) {
           window.clearTimeout(positionSaveTimer);
         }
@@ -1008,7 +1291,17 @@ export function usePetController(): PetController {
       window.setTimeout(() => {
         if (disposed) return;
         let startupShown = false;
-        if (relationshipBeforeSession.absenceDays >= 1) {
+        if (startupRitual && !dndRef.current) {
+          markRitualShown(progress.rituals, startupRitual);
+          void saveProgress(progressLoaded.store, progress);
+          behaviorSchedulerRef.current.cancel();
+          actor.send({ type: "PLAY_RITUAL", ritual: startupRitual.kind });
+          actor.send({
+            type: "SHOW_DIALOGUE",
+            dialogue: ritualDialogue(startupRitual),
+          });
+          startupShown = true;
+        } else if (relationshipBeforeSession.absenceDays >= 1) {
           startupShown = tryShowRef.current({
             type: "returnAfterAbsence",
             absenceDays: relationshipBeforeSession.absenceDays,
@@ -1365,17 +1658,38 @@ export function usePetController(): PetController {
         progress.behavior.updatedAt = Date.now();
         void saveProgress(store, progress);
       }
+      const edgeSession = edgePeekSessionRef.current;
+      edgePeekSessionRef.current = null;
+      if (edgeSession) void finishEdgePeek(edgeSession);
     };
   }, []);
 
   // ---------- 交互 ----------
   const onPetClick = useCallback(
-    (part: PetTouchPart) => {
+    (target: PetTouchTarget) => {
       behaviorSchedulerRef.current.cancel();
+      const progress = progressRef.current;
+      let headpatReaction: HeadpatReaction | undefined;
+      if (target.id === "forehead" && progress) {
+        const context = relationshipContext(progress);
+        headpatReaction = chooseHeadpatReaction({
+          ...context,
+          absenceDays: reunionHeadpatPendingRef.current
+            ? sessionAbsenceDaysRef.current
+            : context.absenceDays,
+        });
+        reunionHeadpatPendingRef.current = false;
+      }
       recordRelationshipEventRef.current(
-        part === "head" ? "headpat" : part === "body" ? "body_touch" : "bow_touch",
+        target.id === "accessory"
+          ? "accessory_touch"
+          : target.id === "bow"
+            ? "bow_touch"
+            : target.id === "lower_face"
+              ? "body_touch"
+              : "headpat",
       );
-      actor.send({ type: "CLICK", at: Date.now(), part });
+      actor.send({ type: "CLICK", at: Date.now(), target, headpatReaction });
     },
     [actor],
   );
@@ -1404,6 +1718,19 @@ export function usePetController(): PetController {
   }, [actor]);
 
   const onAnimationFinished = useCallback(() => {
+    const edgeSession = edgePeekSessionRef.current;
+    if (edgeSession) {
+      edgePeekSessionRef.current = null;
+      void finishEdgePeek(edgeSession).finally(() => {
+        programmaticWindowMoveRef.current = false;
+        setEdgePeekSide(null);
+        actor.send({ type: "ANIMATION_FINISHED" });
+        dispatchBehaviorStepRef.current(
+          behaviorSchedulerRef.current.onAnimationFinished(Date.now()),
+        );
+      });
+      return;
+    }
     actor.send({ type: "ANIMATION_FINISHED" });
     dispatchBehaviorStepRef.current(
       behaviorSchedulerRef.current.onAnimationFinished(Date.now()),
@@ -1542,7 +1869,9 @@ export function usePetController(): PetController {
         scale: keep.scale,
         animations: keep.animations,
         reminders: keep.reminders,
+        wardrobe: { selectedAccessoryId: null },
       };
+      setSelectedAccessoryId(null);
       if (progressStore) await saveProgress(progressStore, fresh);
       if (prefsStore) await savePreferences(prefsStore, prefsRef.current);
       pendingRelationshipDialogsRef.current = [];
@@ -1575,6 +1904,10 @@ export function usePetController(): PetController {
     scale,
     animationPrefs,
     reminderPrefs,
+    selectedAccessoryId,
+    headpatReaction: snapshot.context.headpatReaction,
+    edgePeekSide,
+    touchTarget: snapshot.context.touchTarget,
     hearts,
     fatal,
     openSettings,

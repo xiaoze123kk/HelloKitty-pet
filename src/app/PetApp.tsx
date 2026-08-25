@@ -6,11 +6,15 @@ import { SettingsPanel } from "../components/SettingsPanel";
 import { SleepZzz } from "../components/SleepZzz";
 import { SpeechBubble } from "../components/SpeechBubble";
 import { InteractionArea } from "../pet/InteractionArea";
-import { ProceduralAnimation } from "../pet/ProceduralAnimation";
+import { PetRig } from "../pet/PetRig";
+import { WARDROBE_CATALOG } from "../growth/wardrobe";
 import { usePetController } from "./usePetController";
 
 export function PetApp() {
   const controller = usePetController();
+  const selectedAccessory = controller.selectedAccessoryId
+    ? WARDROBE_CATALOG.find((item) => item.id === controller.selectedAccessoryId) ?? null
+    : null;
   const [debugOpen, setDebugOpen] = useState(
     () =>
       new URLSearchParams(window.location.search).has("debug") ||
@@ -75,6 +79,11 @@ export function PetApp() {
 
       <InteractionArea
         disabled={controller.settingsOpen || debugOpen}
+        accessoryHitRegion={
+          selectedAccessory
+            ? { id: selectedAccessory.id, ...selectedAccessory.hitArea }
+            : null
+        }
         onClick={controller.onPetClick}
         onDragStart={controller.onPetDragStart}
         onDragEnd={controller.onPetDragEnd}
@@ -83,9 +92,13 @@ export function PetApp() {
         onHoldStart={controller.onHoldStart}
         onHoldEnd={controller.onHoldEnd}
       >
-        <ProceduralAnimation
+        <PetRig
           motion={controller.motion}
           zoom={controller.scale}
+          accessoryId={controller.selectedAccessoryId}
+          headpatReaction={controller.headpatReaction}
+          edgePeekSide={controller.edgePeekSide}
+          touchTarget={controller.touchTarget}
           onFinished={controller.onAnimationFinished}
           gazeFollow={
             controller.animationPrefs.gazeFollow && !controller.settingsOpen

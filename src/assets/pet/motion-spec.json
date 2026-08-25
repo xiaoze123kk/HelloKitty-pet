@@ -8,7 +8,7 @@
   },
   "motions": {
     "idle": {
-      "fps": 6,
+      "fps": 2,
       "loop": true,
       "blink": true,
       "base": "open",
@@ -1377,6 +1377,154 @@
           "angle": 0,
           "dy": 0
         }
+      ]
+    },
+    "edgePeek": {
+      "fps": 8,
+      "loop": false,
+      "blink": true,
+      "base": "open",
+      "ease": "sineInOut",
+      "keyframes": [
+        { "scale": 0.98, "scaleY": 0.96, "angle": 0, "dy": 18 },
+        { "scale": 1.0, "scaleY": 0.98, "angle": -3, "dy": 8 },
+        { "scale": 1.03, "scaleY": 1.0, "angle": 3, "dy": 0 },
+        { "scale": 1.04, "scaleY": 1.0, "angle": 0, "dy": -2 },
+        { "scale": 1.03, "scaleY": 1.0, "angle": -2, "dy": 0 },
+        { "scale": 1.0, "scaleY": 0.98, "angle": 2, "dy": 8 },
+        { "scale": 0.98, "scaleY": 0.96, "angle": 0, "dy": 18 }
+      ]
+    },
+    "reunion": {
+      "fps": 9,
+      "loop": false,
+      "blink": false,
+      "base": "happy",
+      "ease": "sineInOut",
+      "keyframes": [
+        { "scale": 0.94, "scaleY": 1.04, "angle": 0, "dy": 9 },
+        { "scale": 1.08, "scaleY": 0.94, "angle": -4, "dy": -8 },
+        { "scale": 1.1, "scaleY": 0.96, "angle": 4, "dy": -10 },
+        { "scale": 1.06, "scaleY": 1.0, "angle": -3, "dy": -5 },
+        { "scale": 1.05, "scaleY": 1.0, "angle": 3, "dy": -4 },
+        { "scale": 1.02, "scaleY": 1.0, "angle": -1, "dy": -2 },
+        { "scale": 1.0, "scaleY": 1.0, "angle": 0, "dy": 0 }
+      ]
+    },
+    "celebrate": {
+      "fps": 10,
+      "loop": false,
+      "blink": false,
+      "base": "happy",
+      "ease": "sineInOut",
+      "keyframes": [
+        { "scale": 1.0, "scaleY": 1.0, "angle": 0, "dy": 0 },
+        { "scale": 0.94, "scaleY": 0.9, "angle": -4, "dy": 7 },
+        { "scale": 1.08, "scaleY": 1.05, "angle": 5, "dy": -16 },
+        { "scale": 1.03, "scaleY": 0.97, "angle": -5, "dy": -6 },
+        { "scale": 1.08, "scaleY": 1.04, "angle": 4, "dy": -14 },
+        { "scale": 1.0, "scaleY": 1.0, "angle": 0, "dy": 0 }
+      ]
+    },
+    "moonGreeting": {
+      "fps": 5,
+      "loop": false,
+      "blink": false,
+      "base": "half",
+      "ease": "sineInOut",
+      "keyframes": [
+        { "scale": 1.0, "scaleY": 1.0, "angle": 0, "dy": 0, "brightness": 0.96 },
+        { "scale": 1.01, "scaleY": 0.99, "angle": -4, "dy": 2, "brightness": 0.92 },
+        { "scale": 1.0, "scaleY": 0.98, "angle": -6, "dy": 4, "brightness": 0.9 },
+        { "scale": 1.01, "scaleY": 0.99, "angle": 2, "dy": 1, "brightness": 0.94 },
+        { "scale": 1.0, "scaleY": 1.0, "angle": 0, "dy": 0, "brightness": 0.96 }
+      ]
+    },
+    "earTouch": {
+      "fps": 8,
+      "loop": false,
+      "blink": true,
+      "base": "open",
+      "ease": "sineInOut",
+      "keyframes": [
+        { "scale": 1.0, "scaleY": 1.0, "angle": 0, "dy": 0 },
+        { "scale": 0.99, "scaleY": 1.01, "angle": 0, "dy": 1 },
+        { "scale": 1.02, "scaleY": 0.99, "angle": 0, "dy": -2 },
+        { "scale": 1.01, "scaleY": 1.0, "angle": 0, "dy": -1 },
+        { "scale": 1.0, "scaleY": 1.0, "angle": 0, "dy": 0 }
+      ]
+    },
+    "cheekTouch": {
+      "fps": 8,
+      "loop": false,
+      "blink": false,
+      "base": "happy",
+      "ease": "sineInOut",
+      "keyframes": [
+        { "scale": 1.0, "scaleY": 1.0, "angle": 0, "dy": 0 },
+        { "scale": 1.02, "scaleY": 0.98, "angle": 0, "dy": 1 },
+        { "scale": 1.04, "scaleY": 0.97, "angle": 0, "dy": 2 },
+        { "scale": 1.02, "scaleY": 0.99, "angle": 0, "dy": 1 },
+        { "scale": 1.0, "scaleY": 1.0, "angle": 0, "dy": 0 }
+      ]
+    },
+    "noseBoop": {
+      "fps": 10,
+      "loop": false,
+      "blink": false,
+      "base": "surprised",
+      "ease": "sineInOut",
+      "keyframes": [
+        { "scale": 1.0, "scaleY": 1.0, "angle": 0, "dy": 0 },
+        { "scale": 0.97, "scaleY": 0.94, "angle": 0, "dy": 4 },
+        { "scale": 1.08, "scaleY": 1.05, "angle": 0, "dy": -7 },
+        { "scale": 1.03, "scaleY": 0.98, "angle": -2, "dy": -2 },
+        { "scale": 1.02, "scaleY": 0.99, "angle": 2, "dy": -1 },
+        { "scale": 1.01, "scaleY": 1.0, "angle": 0, "dy": 0 },
+        { "scale": 1.0, "scaleY": 1.0, "angle": 0, "dy": 0 }
+      ]
+    },
+    "whiskerTouch": {
+      "fps": 10,
+      "loop": false,
+      "blink": true,
+      "base": "open",
+      "ease": "sineInOut",
+      "keyframes": [
+        { "scale": 1.0, "scaleY": 1.0, "angle": 0, "dy": 0 },
+        { "scale": 1.0, "scaleY": 1.0, "angle": -2, "dy": 0 },
+        { "scale": 1.01, "scaleY": 1.0, "angle": 2, "dy": 0 },
+        { "scale": 1.0, "scaleY": 1.0, "angle": -1, "dy": 0 },
+        { "scale": 1.0, "scaleY": 1.0, "angle": 1, "dy": 0 },
+        { "scale": 1.0, "scaleY": 1.0, "angle": 0, "dy": 0 }
+      ]
+    },
+    "faceTouch": {
+      "fps": 7,
+      "loop": false,
+      "blink": true,
+      "base": "half",
+      "ease": "sineInOut",
+      "keyframes": [
+        { "scale": 1.0, "scaleY": 1.0, "angle": 0, "dy": 0 },
+        { "scale": 1.02, "scaleY": 0.98, "angle": 0, "dy": 2 },
+        { "scale": 1.01, "scaleY": 0.99, "angle": 0, "dy": 1 },
+        { "scale": 1.0, "scaleY": 1.0, "angle": 0, "dy": 0 }
+      ]
+    },
+    "accessoryTouch": {
+      "fps": 8,
+      "loop": false,
+      "blink": true,
+      "base": "open",
+      "ease": "sineInOut",
+      "keyframes": [
+        { "scale": 1.0, "scaleY": 1.0, "angle": 0, "dy": 0 },
+        { "scale": 0.99, "scaleY": 0.98, "angle": -2, "dy": 2 },
+        { "scale": 1.03, "scaleY": 1.01, "angle": 2, "dy": -3 },
+        { "scale": 1.02, "scaleY": 1.0, "angle": -1, "dy": -1 },
+        { "scale": 1.01, "scaleY": 1.0, "angle": 1, "dy": 0 },
+        { "scale": 1.0, "scaleY": 1.0, "angle": 0, "dy": 0 }
       ]
     }
   }

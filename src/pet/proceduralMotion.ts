@@ -108,6 +108,16 @@ const SPEC_KEYS: Record<PetVisualMotion, string> = {
   startle: "startle",
   dizzy: "dizzy",
   peek: "peek",
+  edgePeek: "edgePeek",
+  reunion: "reunion",
+  celebrate: "celebrate",
+  moonGreeting: "moonGreeting",
+  earTouch: "earTouch",
+  cheekTouch: "cheekTouch",
+  noseBoop: "noseBoop",
+  whiskerTouch: "whiskerTouch",
+  faceTouch: "faceTouch",
+  accessoryTouch: "accessoryTouch",
 };
 
 export function getSpecKey(motion: PetVisualMotion): string {

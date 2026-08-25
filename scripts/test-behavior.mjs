@@ -77,7 +77,7 @@ const attention = engine.chooseBehavior({
   random: () => 0.5,
 });
 assert.equal(attention?.id, "seek_attention");
-assert.deepEqual(attention?.steps.map((step) => step.event.type), ["IDLE_LOOK", "IDLE_PEEK"]);
+assert.deepEqual(attention?.steps.map((step) => step.event.type), ["IDLE_LOOK", "EDGE_PEEK"]);
 
 const cooldownBlocked = engine.chooseBehavior({
   needs: { energy: 0.05, sleepiness: 1, socialNeed: 0.1, boredom: 0.05, curiosity: 0.1 },
@@ -155,7 +155,7 @@ const firstStep = scheduler.tick({
 assert.equal(firstStep?.event.type, "IDLE_LOOK");
 assert.equal(scheduler.consumeStartedBehavior(), "seek_attention");
 assert.equal(scheduler.consumeStartedBehavior(), null, "开始事件只能消费一次");
-assert.equal(scheduler.onAnimationFinished(context.now + 1_000)?.event.type, "IDLE_PEEK");
+assert.equal(scheduler.onAnimationFinished(context.now + 1_000)?.event.type, "EDGE_PEEK");
 scheduler.cancel();
 assert.equal(scheduler.onAnimationFinished(context.now + 2_000), null);
 

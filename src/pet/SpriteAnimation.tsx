@@ -8,6 +8,7 @@ import {
 interface SpriteAnimationProps {
   config: MotionConfig;
   className?: string;
+  reducedMotion?: boolean;
   /** 非循环动画播放到最后一帧时回调（AnimationController → FSM） */
   onFinished?: () => void;
 }
@@ -15,6 +16,7 @@ interface SpriteAnimationProps {
 export function SpriteAnimation({
   config,
   className,
+  reducedMotion = false,
   onFinished,
 }: SpriteAnimationProps) {
   const [frame, setFrame] = useState(0);
@@ -26,9 +28,13 @@ export function SpriteAnimation({
     setFrame(0);
     finishedRef.current = false;
 
-    if (config.frames <= 1 || config.fps <= 0) {
-      if (config.frames === 1 && !config.loop) {
-        onFinishedRef.current?.();
+    if (reducedMotion || config.frames <= 1 || config.fps <= 0) {
+      if (!config.loop) {
+        const finishedTimer = window.setTimeout(
+          () => onFinishedRef.current?.(),
+          0,
+        );
+        return () => window.clearTimeout(finishedTimer);
       }
       return;
     }
@@ -56,7 +62,7 @@ export function SpriteAnimation({
     return () => {
       window.clearInterval(timer);
     };
-  }, [config]);
+  }, [config, reducedMotion]);
 
   const style: React.CSSProperties = {
     width: PET_FRAME_WIDTH,

@@ -12,10 +12,12 @@ const start = new Date(2026, 7, 20, 10).getTime();
 const relationship = engine.emptyRelationship(start);
 engine.recordEvent(relationship, "session_start", start);
 engine.recordEvent(relationship, "headpat", start + 1_000);
+engine.recordEvent(relationship, "accessory_touch", start + 1_500);
 assert.equal(relationship.sessionCount, 1);
-assert.equal(relationship.totalInteractions, 1);
+assert.equal(relationship.totalInteractions, 2);
 assert.equal(relationship.byPart.head, 1);
 assert.equal(relationship.byType.headpat, 1);
+assert.equal(relationship.byType.accessory_touch, 1);
 
 for (let i = 0; i < 120; i += 1) {
   engine.recordEvent(relationship, "tease", start + i + 2_000);
@@ -43,7 +45,7 @@ const migrated = engine.normalizeRelationship(
   },
   start + 10_000,
 );
-assert.equal(migrated.version, 2);
+assert.equal(migrated.version, 3);
 assert.equal(migrated.byType.headpat, 12);
 assert.ok(migrated.memoryUnlockedAt.first_interaction > 0);
 const unlocked = engine.unlockEligibleMemories(migrated, start + 10_000);

@@ -15,7 +15,8 @@ export type RelationshipEventType =
   | "bow_touch"
   | "petting"
   | "drag"
-  | "tease";
+  | "tease"
+  | "accessory_touch";
 
 type InteractionEventType = Exclude<RelationshipEventType, "session_start">;
 
@@ -27,7 +28,7 @@ export interface RelationshipEvent {
 }
 
 export interface RelationshipData {
-  version: 2;
+  version: 3;
   firstSeenAt: number;
   lastSeenAt: number;
   sessionCount: number;
@@ -187,6 +188,7 @@ const INTERACTION_TYPES: readonly InteractionEventType[] = [
   "petting",
   "drag",
   "tease",
+  "accessory_touch",
 ];
 
 function emptyByType(): Record<InteractionEventType, number> {
@@ -197,12 +199,13 @@ function emptyByType(): Record<InteractionEventType, number> {
     petting: 0,
     drag: 0,
     tease: 0,
+    accessory_touch: 0,
   };
 }
 
 export function emptyRelationship(now: number): RelationshipData {
   return {
-    version: 2,
+    version: 3,
     firstSeenAt: now,
     lastSeenAt: now,
     sessionCount: 0,
@@ -259,6 +262,10 @@ export function normalizeRelationship(raw: unknown, now: number): RelationshipDa
     petting: Math.max(nonNegative(rawByType.petting), derivedByType.petting),
     drag: Math.max(nonNegative(rawByType.drag), derivedByType.drag),
     tease: Math.max(nonNegative(rawByType.tease), derivedByType.tease),
+    accessory_touch: Math.max(
+      nonNegative(rawByType.accessory_touch),
+      derivedByType.accessory_touch,
+    ),
   };
   const firstSeenAt =
     typeof value.firstSeenAt === "number" && Number.isFinite(value.firstSeenAt)
@@ -275,7 +282,7 @@ export function normalizeRelationship(raw: unknown, now: number): RelationshipDa
       typeof timestamp === "number" && Number.isFinite(timestamp) ? timestamp : firstSeenAt;
   }
   return {
-    version: 2,
+    version: 3,
     firstSeenAt,
     lastSeenAt:
       typeof value.lastSeenAt === "number" && Number.isFinite(value.lastSeenAt)
@@ -391,6 +398,7 @@ const EVENT_LABELS: Record<InteractionEventType, string> = {
   petting: "安静撸猫",
   drag: "换个位置",
   tease: "逗猫玩",
+  accessory_touch: "碰配饰",
 };
 
 const BEHAVIOR_LABELS: Record<BehaviorId, string> = {
@@ -472,12 +480,18 @@ export function snapshotRelationship(progress: ProgressData, now = Date.now()): 
   const headpats = todayEvents.filter((event) => event.type === "headpat").length;
   const teases = todayEvents.filter((event) => event.type === "tease").length;
   const pettings = todayEvents.filter((event) => event.type === "petting").length;
+  const accessoryTouches = todayEvents.filter(
+    (event) => event.type === "accessory_touch",
+  ).length;
   const sessions = todayEvents.filter((event) => event.type === "session_start").length;
   const todayActions = progress.behavior.recentActions.filter((entry) => entry.date === today);
   const diary: string[] = ["今天见到了你。"];
   if (headpats > 0) diary.push(`你今天摸了我 ${headpats} 次头。`);
   if (teases > 0) diary.push(`你还拿鼠标逗了我${teases === 1 ? "一次" : `${teases} 次`}。`);
   if (pettings > 0) diary.push(`我们安静地待在一起 ${pettings} 次。`);
+  if (accessoryTouches > 0) {
+    diary.push(`你今天还碰了 ${accessoryTouches} 次我的装扮。`);
+  }
   if (todayActions.length > 0) {
     const latest = todayActions.at(-1);
     if (latest) diary.push(`我今天也会自己${BEHAVIOR_LABELS[latest.id]}。`);

@@ -1,4 +1,8 @@
 import { load } from "@tauri-apps/plugin-store";
+import {
+  normalizeAccessoryId,
+  type AccessoryId,
+} from "../growth/wardrobe";
 import { clampScale, DEFAULT_SCALE } from "../pet/zoom";
 
 export type PrefStore = Awaited<ReturnType<typeof load>>;
@@ -56,6 +60,10 @@ export interface ReminderPreferences {
   sleep: SleepReminder;
 }
 
+export interface WardrobePreferences {
+  selectedAccessoryId: AccessoryId | null;
+}
+
 export const DEFAULT_REMINDERS: ReminderPreferences = {
   water: { enabled: true, intervalMinutes: 60 },
   sedentary: { enabled: true, intervalMinutes: 90 },
@@ -78,6 +86,8 @@ export interface PetPreferences {
   animations: AnimationPreferences;
   /** 陪伴提醒开关与节奏 */
   reminders: ReminderPreferences;
+  /** 当前穿戴；解锁资格由关系记录决定。 */
+  wardrobe: WardrobePreferences;
 }
 
 export const DEFAULT_PREFERENCES: PetPreferences = {
@@ -87,6 +97,7 @@ export const DEFAULT_PREFERENCES: PetPreferences = {
   scale: DEFAULT_SCALE,
   animations: DEFAULT_ANIMATIONS,
   reminders: DEFAULT_REMINDERS,
+  wardrobe: { selectedAccessoryId: null },
 };
 
 function normalizeAnimations(
@@ -155,6 +166,11 @@ export async function loadPreferences(): Promise<{
     scale: clampScale(raw?.scale ?? DEFAULT_PREFERENCES.scale),
     animations: normalizeAnimations(raw?.animations),
     reminders: normalizeReminders(raw?.reminders),
+    wardrobe: {
+      selectedAccessoryId: normalizeAccessoryId(
+        raw?.wardrobe?.selectedAccessoryId,
+      ),
+    },
   };
   return { store, prefs };
 }

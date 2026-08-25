@@ -69,6 +69,7 @@ export type BehaviorEventType =
   | "IDLE_STARTLE"
   | "IDLE_DIZZY"
   | "IDLE_PEEK"
+  | "EDGE_PEEK"
   | "BEGIN_SLEEP"
   | "WALK_START"
   | "WALK_STOP";

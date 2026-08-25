@@ -1,0 +1,62 @@
+import assert from "node:assert/strict";
+import fs from "node:fs/promises";
+import ts from "typescript";
+
+async function loadTs(path) {
+  const source = await fs.readFile(new URL(path, import.meta.url), "utf8");
+  const compiled = ts.transpileModule(source, {
+    compilerOptions: {
+      target: ts.ScriptTarget.ES2022,
+      module: ts.ModuleKind.ESNext,
+    },
+  }).outputText;
+  return import(
+    `data:text/javascript;base64,${Buffer.from(compiled).toString("base64")}`
+  );
+}
+
+const wardrobe = await loadTs("../src/growth/wardrobe.ts");
+const memory = await loadTs("../src/memory/userMemory.ts");
+
+assert.equal(wardrobe.WARDROBE_CATALOG.length, 6);
+assert.equal(
+  new Set(wardrobe.WARDROBE_CATALOG.map((item) => item.id)).size,
+  wardrobe.WARDROBE_CATALOG.length,
+  "wardrobe ids must be unique",
+);
+assert.ok(
+  wardrobe.WARDROBE_CATALOG.every((item) => item.unlockMemoryId),
+  "every accessory must have a relationship unlock",
+);
+assert.equal(
+  wardrobe.wardrobeSnapshot([], "golden_bell").selectedId,
+  null,
+  "locked selection must be cleared",
+);
+assert.equal(
+  wardrobe.wardrobeSnapshot(["interactions_100"], "golden_bell").selectedId,
+  "golden_bell",
+);
+
+const created = memory.createUserMemory(
+  "important",
+  "  明天   带上礼物。  ",
+  123,
+);
+assert.equal(created.text, "明天 带上礼物。");
+assert.equal(created.createdAt, 123);
+assert.throws(() => memory.createUserMemory("moment", "   "));
+
+const raw = Array.from({ length: 24 }, (_, index) => ({
+  id: `memory-${index}`,
+  kind: index % 2 === 0 ? "moment" : "preference",
+  text: `第 ${index} 条`,
+  createdAt: index,
+}));
+raw.push({ id: "broken", kind: "unknown", text: "bad", createdAt: 99 });
+const normalized = memory.normalizeUserMemories(raw);
+assert.equal(normalized.length, memory.MAX_USER_MEMORIES);
+assert.equal(normalized[0].createdAt, 23);
+assert.ok(!normalized.some((item) => item.id === "broken"));
+
+console.log("growth checks passed");

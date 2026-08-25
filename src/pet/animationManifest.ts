@@ -71,7 +71,17 @@ export type PetVisualMotion =
   | "bow"
   | "startle"
   | "dizzy"
-  | "peek";
+  | "peek"
+  | "edgePeek"
+  | "reunion"
+  | "celebrate"
+  | "moonGreeting"
+  | "earTouch"
+  | "cheekTouch"
+  | "noseBoop"
+  | "whiskerTouch"
+  | "faceTouch"
+  | "accessoryTouch";
 
 export const petMotions: Record<PetVisualMotion, MotionConfig> = {
   idle: motions.idle,
@@ -107,4 +117,14 @@ export const petMotions: Record<PetVisualMotion, MotionConfig> = {
   startle: sheetConfig("/assets/pet/startle.png", "startle"),
   dizzy: sheetConfig("/assets/pet/dizzy.png", "dizzy"),
   peek: sheetConfig("/assets/pet/peek.png", "peek"),
+  edgePeek: sheetConfig("/assets/pet/peek.png", "edgePeek"),
+  reunion: sheetConfig("/assets/pet/happy.png", "reunion"),
+  celebrate: sheetConfig("/assets/pet/happy.png", "celebrate"),
+  moonGreeting: sheetConfig("/assets/pet/sleepy.png", "moonGreeting"),
+  earTouch: sheetConfig("/assets/pet/headpat.png", "earTouch"),
+  cheekTouch: sheetConfig("/assets/pet/headpat.png", "cheekTouch"),
+  noseBoop: sheetConfig("/assets/pet/sneeze.png", "noseBoop"),
+  whiskerTouch: sheetConfig("/assets/pet/shake.png", "whiskerTouch"),
+  faceTouch: sheetConfig("/assets/pet/clicked.png", "faceTouch"),
+  accessoryTouch: sheetConfig("/assets/pet/bow.png", "accessoryTouch"),
 };

@@ -7,6 +7,10 @@ import {
 } from "@tauri-apps/api/window";
 import { clampScale, DEFAULT_SCALE } from "../pet/zoom";
 import type { PetPreferences, PrefStore } from "../storage/preferences";
+import {
+  computeEdgePeekPlacement,
+  type PeekEdge,
+} from "./edgePeek";
 
 const EDGE_MARGIN_X = 24;
 const EDGE_MARGIN_Y = 56;
@@ -58,6 +62,79 @@ export const WINDOW_CSS_WIDTH = 300;
 export const WINDOW_CSS_HEIGHT = 320;
 
 export const appWindow = getCurrentWindow();
+
+export interface EdgePeekSession {
+  edge: PeekEdge;
+  origin: { x: number; y: number };
+}
+
+async function animateWindowPosition(
+  from: { x: number; y: number },
+  to: { x: number; y: number },
+  durationMs: number,
+): Promise<void> {
+  const started = performance.now();
+  while (true) {
+    const elapsed = performance.now() - started;
+    const t = Math.min(1, elapsed / durationMs);
+    const eased = 0.5 - Math.cos(Math.PI * t) / 2;
+    await appWindow.setPosition(
+      new PhysicalPosition(
+        Math.round(from.x + (to.x - from.x) * eased),
+        Math.round(from.y + (to.y - from.y) * eased),
+      ),
+    );
+    if (t >= 1) return;
+    await new Promise<void>((resolve) => window.setTimeout(resolve, 28));
+  }
+}
+
+/**
+ * 从当前最近的显示器边缘藏起大部分窗口。远离边缘时返回 null，调用方应
+ * 回退到普通 peek 动作。位置恢复由 finishEdgePeek 负责。
+ */
+export async function beginEdgePeek(): Promise<EdgePeekSession | null> {
+  const monitors = await getMonitorsCached();
+  if (monitors.length === 0) return null;
+  const [pos, size] = await Promise.all([
+    appWindow.outerPosition(),
+    appWindow.outerSize(),
+  ]);
+  const centerX = pos.x + size.width / 2;
+  const centerY = pos.y + size.height / 2;
+  const monitor =
+    findMonitorAt(monitors, centerX, centerY) ??
+    (await primaryMonitor().catch(() => null)) ??
+    monitors[0];
+  const dpr = window.devicePixelRatio || 1;
+  const placement = computeEdgePeekPlacement(
+    { x: pos.x, y: pos.y, width: size.width, height: size.height },
+    {
+      x: monitor.position.x,
+      y: monitor.position.y,
+      width: monitor.size.width,
+      height: monitor.size.height,
+    },
+    96 * dpr,
+    142 * dpr,
+  );
+  if (!placement) return null;
+  await animateWindowPosition(
+    { x: pos.x, y: pos.y },
+    { x: placement.x, y: placement.y },
+    360,
+  );
+  return { edge: placement.edge, origin: { x: pos.x, y: pos.y } };
+}
+
+export async function finishEdgePeek(session: EdgePeekSession): Promise<void> {
+  const current = await appWindow.outerPosition();
+  await animateWindowPosition(
+    { x: current.x, y: current.y },
+    session.origin,
+    420,
+  );
+}
 
 /**
  * 让 WebView 视口恒为 300x320 CSS 像素 × 桌宠缩放比例。

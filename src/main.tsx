@@ -9,6 +9,9 @@ const PetApp = lazy(() =>
 const NestWindow = lazy(() =>
   import("./components/NestWindow").then((module) => ({ default: module.NestWindow })),
 );
+const PetPreview = lazy(() =>
+  import("./components/PetPreview").then((module) => ({ default: module.PetPreview })),
+);
 
 function reportToRust(kind: string, message: string): void {
   try {
@@ -89,8 +92,11 @@ if (!root) {
 const isNestPreview =
   import.meta.env.DEV &&
   new URLSearchParams(window.location.search).has("nest-preview");
+const isPetPreview =
+  import.meta.env.DEV &&
+  new URLSearchParams(window.location.search).has("pet-preview");
 let isNestWindow = isNestPreview;
-if (!isNestPreview) {
+if (!isNestPreview && !isPetPreview) {
   try {
     isNestWindow = getCurrentWindow().label === "nest";
   } catch {
@@ -101,7 +107,13 @@ if (!isNestPreview) {
 ReactDOM.createRoot(root).render(
   <PetErrorBoundary>
     <Suspense fallback={null}>
-      {isNestWindow ? <NestWindow preview={isNestPreview} /> : <PetApp />}
+      {isPetPreview ? (
+        <PetPreview />
+      ) : isNestWindow ? (
+        <NestWindow preview={isNestPreview} />
+      ) : (
+        <PetApp />
+      )}
     </Suspense>
   </PetErrorBoundary>,
 );

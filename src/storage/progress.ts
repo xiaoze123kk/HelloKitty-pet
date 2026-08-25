@@ -18,6 +18,15 @@ import {
   normalizeBehaviorState,
 } from "../behavior/needs";
 import type { BehaviorStateData } from "../behavior/types";
+import type { UserMemory } from "../memory/userMemory";
+import {
+  emptyRitualState,
+  type RitualStateData,
+} from "../relationship/reactionEngine";
+import {
+  migrateProgressV4Fields,
+  PROGRESS_VERSION,
+} from "./progressMigration";
 
 export type ProgressStore = Awaited<ReturnType<typeof load>>;
 
@@ -43,7 +52,7 @@ export function emptyReminderState(): ReminderState {
 
 export interface ProgressData {
   /** 持久化结构版本；缺失视为 v0.3 及更早数据。 */
-  version: 2;
+  version: typeof PROGRESS_VERSION;
   launchCount: number;
   firstLaunchAt: string | null;
   launchDates: string[];
@@ -53,11 +62,15 @@ export interface ProgressData {
   reminders: ReminderState;
   relationship: RelationshipData;
   behavior: BehaviorStateData;
+  /** 仅保存用户明确要求 Kitty 记住的有限条目。 */
+  userMemories: UserMemory[];
+  /** 稀有陪伴仪式的本地去重记录，不保存环境内容。 */
+  rituals: RitualStateData;
 }
 
 export function emptyProgress(now: number): ProgressData {
   return {
-    version: 2,
+    version: PROGRESS_VERSION,
     launchCount: 1,
     firstLaunchAt: new Date(now).toISOString(),
     launchDates: [new Date(now).toISOString().slice(0, 10)],
@@ -67,6 +80,8 @@ export function emptyProgress(now: number): ProgressData {
     reminders: emptyReminderState(),
     relationship: emptyRelationship(now),
     behavior: emptyBehaviorState(now),
+    userMemories: [],
+    rituals: emptyRitualState(),
   };
 }
 
@@ -84,6 +99,7 @@ export async function loadProgress(): Promise<{
   const store = await load("progress.json", { autoSave: false });
   const raw = await store.get<Partial<ProgressData>>("pet");
   const now = Date.now();
+  const v4 = migrateProgressV4Fields(raw);
   const rawReminders = raw?.reminders;
   const firstLaunchAt =
     typeof raw?.firstLaunchAt === "string"
@@ -108,7 +124,7 @@ export async function loadProgress(): Promise<{
     }
   }
   const progress: ProgressData = {
-    version: 2,
+    version: v4.version,
     launchCount: typeof raw?.launchCount === "number" ? raw.launchCount : 0,
     firstLaunchAt,
     launchDates: Array.isArray(raw?.launchDates) ? raw.launchDates : [],
@@ -143,6 +159,8 @@ export async function loadProgress(): Promise<{
     },
     relationship,
     behavior: normalizeBehaviorState(raw?.behavior, now),
+    userMemories: v4.userMemories,
+    rituals: v4.rituals,
   };
   return { store, progress };
 }
