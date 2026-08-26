@@ -178,6 +178,21 @@ fn log_frontend(message: String) {
     println!("[frontend] {message}");
 }
 
+/// 原生窗口拖拽会吞掉 WebView 的 mouseup；直接读取 Windows 主鼠标键，
+/// 让前端能在松手后立即切到落地状态，而不是等待窗口移动静默超时。
+#[tauri::command]
+fn is_primary_mouse_button_pressed() -> bool {
+    #[cfg(target_os = "windows")]
+    {
+        use windows_sys::Win32::UI::Input::KeyboardAndMouse::{GetAsyncKeyState, VK_LBUTTON};
+        // GetAsyncKeyState 的最高位表示调用瞬间按键是否按下。
+        return unsafe { GetAsyncKeyState(VK_LBUTTON as i32) < 0 };
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    false
+}
+
 #[tauri::command]
 fn open_nest(app: tauri::AppHandle) {
     open_nest_window(&app);
@@ -190,6 +205,7 @@ pub fn run() {
         .plugin(tauri_plugin_store::Builder::new().build())
         .invoke_handler(tauri::generate_handler![
             log_frontend,
+            is_primary_mouse_button_pressed,
             open_nest,
             create_backup,
             restore_latest_backup

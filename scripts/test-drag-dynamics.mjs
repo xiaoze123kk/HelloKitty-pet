@@ -62,4 +62,20 @@ for (const sourcePath of [
   assert.match(integration, /DragMotion|DragRelease/);
 }
 
+const interactionSource = await fs.readFile(
+  new URL("../src/pet/InteractionArea.tsx", import.meta.url),
+  "utf8",
+);
+assert.match(interactionSource, /DRAG_BUTTON_POLL_MS\s*=\s*30/);
+assert.match(interactionSource, /DRAG_RELEASE_CONFIRMATIONS\s*=\s*2/);
+assert.match(interactionSource, /is_primary_mouse_button_pressed/);
+assert.match(interactionSource, /DRAG_END_QUIET_FALLBACK_MS\s*=\s*700/);
+
+const rustSource = await fs.readFile(
+  new URL("../src-tauri/src/lib.rs", import.meta.url),
+  "utf8",
+);
+assert.match(rustSource, /fn is_primary_mouse_button_pressed/);
+assert.match(rustSource, /GetAsyncKeyState/);
+
 console.log("drag dynamics checks passed");

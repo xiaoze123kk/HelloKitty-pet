@@ -1,4 +1,5 @@
 import { useEffect, useRef, type PointerEvent, type ReactNode } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 
 const appWindow = getCurrentWindow();
@@ -37,7 +38,10 @@ interface InteractionAreaProps {
 }
 
 const DRAG_THRESHOLD_PX = 6;
-const DRAG_END_QUIET_MS = 700;
+const DRAG_BUTTON_POLL_MS = 30;
+const DRAG_BUTTON_POLL_GRACE_MS = 80;
+const DRAG_RELEASE_CONFIRMATIONS = 2;
+const DRAG_END_QUIET_FALLBACK_MS = 700;
 const HOLD_THRESHOLD_MS = 650;
 
 /**
@@ -46,7 +50,8 @@ const HOLD_THRESHOLD_MS = 650;
  * - 不使用 data-tauri-drag-region：Tauri 注入脚本会在每次 mousedown
  *   直接开始拖拽 / 双击最大化，连点会被系统手势吞掉
  * - 按下后未移动就松开 → CLICK
- * - 原生拖拽可能吞掉 mouseup，用 onMoved + 静默计时器兜底发 DRAG_END
+ * - 原生拖拽可能吞掉 mouseup，轮询 Windows 主鼠标键并双确认松开后发 DRAG_END
+ * - 只有主键探测 IPC 失败时才退回 700ms onMoved 静默兜底
  * - 右键 → 打开设置
  */
 export function InteractionArea({
@@ -71,6 +76,11 @@ export function InteractionArea({
   const startedByMoveRef = useRef(false);
   const lastWindowSampleRef = useRef<DragWindowSample | null>(null);
   const lastDragMotionRef = useRef<DragMotion>(STILL_DRAG_MOTION);
+  const dragStartedAtRef = useRef(0);
+  const releaseConfirmationRef = useRef(0);
+  const buttonProbeInFlightRef = useRef(false);
+  const buttonProbeFailedRef = useRef(false);
+  const dragSessionRef = useRef(0);
 
   const onClickRef = useRef(onClick);
   const onDragStartRef = useRef(onDragStart);
@@ -120,6 +130,8 @@ export function InteractionArea({
         }
         draggingRef.current = true;
         startedByMoveRef.current = true;
+        dragStartedAtRef.current = Date.now();
+        releaseConfirmationRef.current = 0;
         onDragStartRef.current();
       }
       if (!draggingRef.current) return;
@@ -149,15 +161,54 @@ export function InteractionArea({
       }
     });
 
-    // 兜底：原生拖拽开始后 mouseup 可能不再派发到 WebView
+    // 原生拖拽期间 WebView 可能收不到 mouseup。直接读取 Windows 主鼠标键，
+    // 连续两次确认松开后落地；这样按住不动不会被短静默阈值误判。
     const timer = window.setInterval(() => {
-      if (
-        draggingRef.current &&
-        Date.now() - lastMovedAtRef.current > DRAG_END_QUIET_MS
-      ) {
-        finishDrag();
+      if (!draggingRef.current) return;
+      const now = Date.now();
+      if (buttonProbeFailedRef.current) {
+        if (now - lastMovedAtRef.current > DRAG_END_QUIET_FALLBACK_MS) {
+          finishDrag();
+        }
+        return;
       }
-    }, 250);
+      if (
+        now - dragStartedAtRef.current < DRAG_BUTTON_POLL_GRACE_MS ||
+        buttonProbeInFlightRef.current
+      ) {
+        return;
+      }
+
+      buttonProbeInFlightRef.current = true;
+      const probeSession = dragSessionRef.current;
+      void invoke<boolean>("is_primary_mouse_button_pressed")
+        .then((pressed) => {
+          if (
+            probeSession !== dragSessionRef.current ||
+            !draggingRef.current
+          ) {
+            return;
+          }
+          if (pressed) {
+            releaseConfirmationRef.current = 0;
+            return;
+          }
+          releaseConfirmationRef.current += 1;
+          if (releaseConfirmationRef.current >= DRAG_RELEASE_CONFIRMATIONS) {
+            finishDrag();
+          }
+        })
+        .catch((error) => {
+          if (probeSession !== dragSessionRef.current) return;
+          buttonProbeFailedRef.current = true;
+          console.error("primary mouse button probe failed:", error);
+        })
+        .finally(() => {
+          if (probeSession === dragSessionRef.current) {
+            buttonProbeInFlightRef.current = false;
+          }
+        });
+    }, DRAG_BUTTON_POLL_MS);
 
     return () => {
       disposed = true;
@@ -171,14 +222,21 @@ export function InteractionArea({
   }, []);
 
   function resetDragMotion() {
+    dragSessionRef.current += 1;
     lastWindowSampleRef.current = null;
     lastDragMotionRef.current = STILL_DRAG_MOTION;
+    dragStartedAtRef.current = 0;
+    releaseConfirmationRef.current = 0;
+    buttonProbeInFlightRef.current = false;
+    buttonProbeFailedRef.current = false;
     onDragMotionRef.current?.(STILL_DRAG_MOTION);
   }
 
   function finishDrag() {
+    if (!draggingRef.current && !startedByMoveRef.current) return;
     const release = releaseFromDragMotion(lastDragMotionRef.current);
     draggingRef.current = false;
+    startedByMoveRef.current = false;
     downRef.current = null;
     lastWindowSampleRef.current = null;
     lastDragMotionRef.current = STILL_DRAG_MOTION;
@@ -221,6 +279,8 @@ export function InteractionArea({
       draggingRef.current = true;
       startedByMoveRef.current = true;
       lastMovedAtRef.current = Date.now();
+      dragStartedAtRef.current = lastMovedAtRef.current;
+      releaseConfirmationRef.current = 0;
       onDragStartRef.current();
       // 只在真实发生移动时才交给系统拖拽，连点不会被 mousedown 手势干扰
       void appWindow.startDragging().catch((error) => {
@@ -232,6 +292,13 @@ export function InteractionArea({
   function handlePointerUp(event: PointerEvent<HTMLDivElement>) {
     if (event.button !== 0) return;
     if (disabled) return;
+    if (
+      !downRef.current &&
+      !draggingRef.current &&
+      !startedByMoveRef.current
+    ) {
+      return;
+    }
     if (holdTimerRef.current !== null) {
       window.clearTimeout(holdTimerRef.current);
       holdTimerRef.current = null;
