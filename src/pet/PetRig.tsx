@@ -9,6 +9,16 @@ import type { HeadpatReaction } from "../relationship/reactionEngine";
 import type { PetTouchTarget } from "./touchZones";
 import type { PeekEdge } from "../platform/edgePeek";
 import type { PetVisualMotion } from "./animationManifest";
+import {
+  ACCESSORY_SPRING_CONFIG,
+  BOW_SHEEN_SPRING_CONFIG,
+  createLayerSpringState,
+  layerPoseFromKeyframe,
+  poseFromLayerSpring,
+  stepLayerSpring,
+  type LayerPose,
+  type LayerSpringState,
+} from "./layerSpring";
 import { accessoryReactionFor } from "./layeredMotion";
 import type { MotionKeyframe } from "./proceduralMotion";
 import { ProceduralAnimation } from "./ProceduralAnimation";
@@ -27,7 +37,7 @@ interface PetRigProps {
 function AccessoryLayer({ item }: { item: AccessoryDefinition }) {
   return (
     <span
-      className="pet-accessory-pose pet-rig-follow-pose"
+      className="pet-accessory-pose pet-layer-accessory-pose"
       data-layer={item.layer}
     >
       <span
@@ -46,6 +56,24 @@ function AccessoryLayer({ item }: { item: AccessoryDefinition }) {
   );
 }
 
+const NEUTRAL_LAYER_POSE: LayerPose = {
+  scaleX: 1,
+  scaleY: 1,
+  angle: 0,
+  dy: 0,
+};
+
+function applyLayerPose(
+  rig: HTMLDivElement,
+  layer: "accessory" | "bow",
+  pose: LayerPose,
+) {
+  rig.style.setProperty(`--${layer}-pose-scale-x`, String(pose.scaleX));
+  rig.style.setProperty(`--${layer}-pose-scale-y`, String(pose.scaleY));
+  rig.style.setProperty(`--${layer}-pose-angle`, `${pose.angle}deg`);
+  rig.style.setProperty(`--${layer}-pose-dy`, `${pose.dy}px`);
+}
+
 export function PetRig({
   motion,
   zoom,
@@ -58,6 +86,14 @@ export function PetRig({
 }: PetRigProps) {
   const rigRef = useRef<HTMLDivElement | null>(null);
   const gazeRef = useRef<HTMLDivElement | null>(null);
+  const layerTargetRef = useRef<LayerPose>(NEUTRAL_LAYER_POSE);
+  const accessorySpringRef = useRef<LayerSpringState>(
+    createLayerSpringState(NEUTRAL_LAYER_POSE),
+  );
+  const bowSpringRef = useRef<LayerSpringState>(
+    createLayerSpringState(NEUTRAL_LAYER_POSE),
+  );
+  const receivedPoseRef = useRef(false);
   const accessory = accessoryId
     ? WARDROBE_CATALOG.find((item) => item.id === accessoryId) ?? null
     : null;
@@ -84,7 +120,78 @@ export function PetRig({
       String(0.18 - liftRatio * 0.11),
     );
     rig.style.setProperty("--shadow-blur", `${4 + liftRatio * 4}px`);
+    const layerTarget = layerPoseFromKeyframe(pose);
+    layerTargetRef.current = layerTarget;
+    if (!receivedPoseRef.current) {
+      receivedPoseRef.current = true;
+      accessorySpringRef.current = createLayerSpringState(layerTarget);
+      bowSpringRef.current = createLayerSpringState(layerTarget);
+      applyLayerPose(rig, "accessory", layerTarget);
+      applyLayerPose(rig, "bow", layerTarget);
+    }
   }, []);
+
+  useEffect(() => {
+    const rig = rigRef.current;
+    if (!rig) return;
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
+    let reducedMotion = reduced.matches;
+    let animationFrame = 0;
+    let lastFrame: number | null = null;
+
+    const snapLayers = () => {
+      const target = layerTargetRef.current;
+      accessorySpringRef.current = createLayerSpringState(target);
+      bowSpringRef.current = createLayerSpringState(target);
+      applyLayerPose(rig, "accessory", target);
+      applyLayerPose(rig, "bow", target);
+    };
+    const onReducedMotionChange = () => {
+      reducedMotion = reduced.matches;
+      if (reducedMotion) snapLayers();
+    };
+    const tick = (now: number) => {
+      const elapsed = lastFrame === null ? 0 : now - lastFrame;
+      lastFrame = now;
+      const target = layerTargetRef.current;
+      accessorySpringRef.current = stepLayerSpring(
+        accessorySpringRef.current,
+        target,
+        elapsed,
+        ACCESSORY_SPRING_CONFIG,
+        reducedMotion,
+      );
+      bowSpringRef.current = stepLayerSpring(
+        bowSpringRef.current,
+        target,
+        elapsed,
+        BOW_SHEEN_SPRING_CONFIG,
+        reducedMotion,
+      );
+      applyLayerPose(
+        rig,
+        "accessory",
+        poseFromLayerSpring(accessorySpringRef.current),
+      );
+      applyLayerPose(rig, "bow", poseFromLayerSpring(bowSpringRef.current));
+      animationFrame = requestAnimationFrame(tick);
+    };
+
+    reduced.addEventListener("change", onReducedMotionChange);
+    animationFrame = requestAnimationFrame(tick);
+    return () => {
+      reduced.removeEventListener("change", onReducedMotionChange);
+      cancelAnimationFrame(animationFrame);
+    };
+  }, []);
+
+  useEffect(() => {
+    const rig = rigRef.current;
+    if (!rig) return;
+    const target = layerTargetRef.current;
+    accessorySpringRef.current = createLayerSpringState(target);
+    applyLayerPose(rig, "accessory", target);
+  }, [accessoryId]);
 
   useEffect(() => {
     const gaze = gazeRef.current;
@@ -138,10 +245,13 @@ export function PetRig({
             onPose={mirrorPose}
           />
 
+          <div className="pet-bow-sheen-pose pet-layer-bow-pose" aria-hidden="true">
+            <span className="pet-bow-sheen" />
+          </div>
+
           <div className="pet-face-dynamics pet-rig-follow-pose" aria-hidden="true">
             <span className="pet-eye-glint pet-eye-glint-left" />
             <span className="pet-eye-glint pet-eye-glint-right" />
-            <span className="pet-bow-sheen" />
             <span className="pet-whiskers pet-whiskers-left">
               <i />
               <i />

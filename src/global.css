@@ -93,6 +93,14 @@ body {
   --shadow-scale-x: 1;
   --shadow-opacity: .18;
   --shadow-blur: 4px;
+  --accessory-pose-scale-x: 1;
+  --accessory-pose-scale-y: 1;
+  --accessory-pose-angle: 0deg;
+  --accessory-pose-dy: 0px;
+  --bow-pose-scale-x: 1;
+  --bow-pose-scale-y: 1;
+  --bow-pose-angle: 0deg;
+  --bow-pose-dy: 0px;
 }
 
 .pet-ground-shadow {
@@ -142,6 +150,27 @@ body {
   filter: brightness(var(--pose-brightness));
 }
 
+.pet-layer-accessory-pose,
+.pet-layer-bow-pose {
+  transform-origin: 120px 120px;
+  will-change: transform;
+  filter: brightness(var(--pose-brightness));
+}
+
+.pet-layer-accessory-pose {
+  transform:
+    translateY(var(--accessory-pose-dy))
+    rotate(var(--accessory-pose-angle))
+    scale(var(--accessory-pose-scale-x), var(--accessory-pose-scale-y));
+}
+
+.pet-layer-bow-pose {
+  transform:
+    translateY(var(--bow-pose-dy))
+    rotate(var(--bow-pose-angle))
+    scale(var(--bow-pose-scale-x), var(--bow-pose-scale-y));
+}
+
 .pet-face-dynamics {
   position: absolute;
   inset: 0;
@@ -174,6 +203,13 @@ body {
   transform: rotate(11deg);
   transform-origin: center;
   animation: bow-secondary-breathe 3.2s ease-in-out infinite;
+}
+
+.pet-bow-sheen-pose {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
 }
 
 .pet-whiskers {
