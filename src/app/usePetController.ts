@@ -20,6 +20,7 @@ import {
   recordBehaviorMotion,
 } from "../behavior/needs";
 import { autonomousMotionForEvent } from "../behavior/motionHistory";
+import { behaviorThoughtCooldownReady } from "../behavior/expressionDirector";
 import type { BehaviorId, BehaviorStep, ContextSnapshot } from "../behavior/types";
 import {
   emptyInteractionContext,
@@ -52,6 +53,7 @@ import {
 } from "../memory/userMemory";
 import type { NestSnapshot } from "../nest/types";
 import type { PetVisualMotion } from "../pet/animationManifest";
+import type { MicroCue } from "../pet/microMotion";
 import type { PetEffectEvent } from "../effects/effectManifest";
 import {
   STILL_DRAG_MOTION,
@@ -171,14 +173,6 @@ const MORNING_LINES = [
   "早上好！新的一天开始啦",
   "早呀，今天也要多喝水哦",
 ];
-
-const BEHAVIOR_THOUGHTS: Partial<Record<BehaviorId, string>> = {
-  sleep: "有点困啦…",
-  rest: "安静歇一会儿。",
-  seek_attention: "偷偷看看你。",
-  self_play: "自己玩一会儿。",
-  explore: "去旁边看看。",
-};
 
 const HEAD_TOUCH_LINES: Record<HeadpatReaction, string[]> = {
   shy: [
@@ -364,6 +358,8 @@ export interface PetController {
   bubble: DialogueDisplay | null;
   /** 自主行为的轻量想法提示，不改变状态机，也不占用对白配额。 */
   behaviorThought: string | null;
+  behaviorMicroCue: MicroCue | undefined;
+  behaviorGazeOverride: boolean | null;
   followUp: boolean;
   settingsOpen: boolean;
   dnd: boolean;
@@ -443,6 +439,8 @@ export function usePetController(): PetController {
   );
   const [bubble, setBubble] = useState<DialogueDisplay | null>(null);
   const [behaviorThought, setBehaviorThought] = useState<string | null>(null);
+  const [behaviorMicroCue, setBehaviorMicroCue] = useState<MicroCue | undefined>(undefined);
+  const [behaviorGazeOverride, setBehaviorGazeOverride] = useState<boolean | null>(null);
   const [followUp, setFollowUp] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [dnd, setDnd] = useState(false);
@@ -528,6 +526,7 @@ export function usePetController(): PetController {
   const behaviorNeedsRef = useRef(initialNeeds());
   const behaviorNeedsAtRef = useRef(Date.now());
   const behaviorSchedulerRef = useRef(new BehaviorScheduler());
+  const behaviorPlanGenerationRef = useRef(0);
   const interactionContextRef = useRef(emptyInteractionContext());
   /** 偏好加载完成前不允许自动恢复散步，避免误读默认值 */
   const walkingReadyRef = useRef(false);
@@ -537,6 +536,25 @@ export function usePetController(): PetController {
   const reunionHeadpatPendingRef = useRef(false);
   const edgePeekSessionRef = useRef<EdgePeekSession | null>(null);
   const programmaticWindowMoveRef = useRef(false);
+
+  const clearBehaviorExpression = useCallback(() => {
+    setBehaviorMicroCue(undefined);
+    setBehaviorGazeOverride(null);
+    setBehaviorThought(null);
+    if (behaviorThoughtTimerRef.current !== undefined) {
+      window.clearTimeout(behaviorThoughtTimerRef.current);
+      behaviorThoughtTimerRef.current = undefined;
+    }
+  }, []);
+  const clearBehaviorExpressionRef = useRef(clearBehaviorExpression);
+  clearBehaviorExpressionRef.current = clearBehaviorExpression;
+  const cancelBehaviorPlan = useCallback(() => {
+    behaviorPlanGenerationRef.current += 1;
+    behaviorSchedulerRef.current.cancel();
+    clearBehaviorExpressionRef.current();
+  }, []);
+  const cancelBehaviorPlanRef = useRef(cancelBehaviorPlan);
+  cancelBehaviorPlanRef.current = cancelBehaviorPlan;
 
   const behaviorContext = useCallback((now = Date.now()): ContextSnapshot => {
     const progress = progressRef.current;
@@ -588,6 +606,9 @@ export function usePetController(): PetController {
       timeBand: timeBandFor(date.getHours()),
       sessionPhase: sessionPhaseFor(sessionMinutes, sessionAbsenceDaysRef.current),
       recentInteractionPattern,
+      microMotionEnabled: animationRef.current.microMotion,
+      gazeFollowEnabled: animationRef.current.gazeFollow,
+      reducedMotion: window.matchMedia("(prefers-reduced-motion: reduce)").matches,
     };
   }, [actor]);
   const behaviorContextRef = useRef(behaviorContext);
@@ -596,6 +617,22 @@ export function usePetController(): PetController {
   const dispatchBehaviorStep = useCallback(
     (step: BehaviorStep | null): void => {
       if (!step) return;
+      setBehaviorMicroCue(step.microCue ?? "none");
+      setBehaviorGazeOverride(step.gaze === "user");
+      if (
+        step.thought &&
+        behaviorThoughtCooldownReady(lastBehaviorThoughtAtRef.current, Date.now())
+      ) {
+        lastBehaviorThoughtAtRef.current = Date.now();
+        setBehaviorThought(step.thought);
+        if (behaviorThoughtTimerRef.current !== undefined) {
+          window.clearTimeout(behaviorThoughtTimerRef.current);
+        }
+        behaviorThoughtTimerRef.current = window.setTimeout(() => {
+          behaviorThoughtTimerRef.current = undefined;
+          setBehaviorThought(null);
+        }, 2_400);
+      }
       const recordMotion = (eventType: BehaviorStep["event"]["type"]): void => {
         const progress = progressRef.current;
         const motion = autonomousMotionForEvent(eventType);
@@ -605,9 +642,15 @@ export function usePetController(): PetController {
         console.debug("[behavior]", step.event.type);
       }
       if (step.event.type === "EDGE_PEEK") {
+        const planGeneration = behaviorPlanGenerationRef.current;
         programmaticWindowMoveRef.current = true;
         void beginEdgePeek()
           .then((session) => {
+            if (planGeneration !== behaviorPlanGenerationRef.current) {
+              programmaticWindowMoveRef.current = false;
+              if (session) void finishEdgePeek(session);
+              return;
+            }
             if (!session) {
               programmaticWindowMoveRef.current = false;
               recordMotion("IDLE_PEEK");
@@ -622,6 +665,7 @@ export function usePetController(): PetController {
           .catch((error) => {
             programmaticWindowMoveRef.current = false;
             console.error("begin edge peek failed:", error);
+            if (planGeneration !== behaviorPlanGenerationRef.current) return;
             recordMotion("IDLE_PEEK");
             actor.send({ type: "IDLE_PEEK" });
           });
@@ -676,25 +720,6 @@ export function usePetController(): PetController {
       progress.behavior.needs = behaviorNeedsRef.current;
       recordBehaviorAction(progress.behavior, id, now);
       lastBehaviorPersistAtRef.current = now;
-      const thought = BEHAVIOR_THOUGHTS[id];
-      const important = id === "sleep" || id === "seek_attention";
-      if (
-        thought &&
-        !dndRef.current &&
-        !settingsOpenRef.current &&
-        now - lastBehaviorThoughtAtRef.current >= 180_000 &&
-        (important || Math.random() < 0.35)
-      ) {
-        lastBehaviorThoughtAtRef.current = now;
-        setBehaviorThought(thought);
-        if (behaviorThoughtTimerRef.current !== undefined) {
-          window.clearTimeout(behaviorThoughtTimerRef.current);
-        }
-        behaviorThoughtTimerRef.current = window.setTimeout(() => {
-          behaviorThoughtTimerRef.current = undefined;
-          setBehaviorThought(null);
-        }, 2_400);
-      }
       emitNestSnapshotRef.current(progress);
       scheduleProgressSaveRef.current();
     },
@@ -775,7 +800,7 @@ export function usePetController(): PetController {
         },
       );
       if (!dialogue) return false;
-      behaviorSchedulerRef.current.cancel();
+      cancelBehaviorPlanRef.current();
       actor.send({ type: "SHOW_DIALOGUE", dialogue });
       if (progressStoreRef.current) {
         void saveProgress(progressStoreRef.current, progress);
@@ -1015,7 +1040,7 @@ export function usePetController(): PetController {
         void savePreferences(prefsStoreRef.current, prefsRef.current);
       }
       if (next) {
-        behaviorSchedulerRef.current.cancel();
+        cancelBehaviorPlanRef.current();
         actor.send({ type: "DIALOGUE_FINISHED" });
         // 勿扰期间暂停散步
         if (actor.getSnapshot().value === "walking") {
@@ -1318,7 +1343,7 @@ export function usePetController(): PetController {
               prefsRef.current.wardrobe.selectedAccessoryId = normalized;
               setSelectedAccessoryId(normalized);
               if (normalized && !settingsOpenRef.current) {
-                behaviorSchedulerRef.current.cancel();
+                cancelBehaviorPlanRef.current();
                 const welcomeEvent =
                   normalized === "moon_cap"
                     ? ({ type: "IDLE_YAWN" } as const)
@@ -1485,7 +1510,7 @@ export function usePetController(): PetController {
         if (startupRitual && !dndRef.current) {
           markRitualShown(progress.rituals, startupRitual);
           void saveProgress(progressLoaded.store, progress);
-          behaviorSchedulerRef.current.cancel();
+          cancelBehaviorPlanRef.current();
           actor.send({ type: "PLAY_RITUAL", ritual: startupRitual.kind });
           actor.send({
             type: "SHOW_DIALOGUE",
@@ -1561,6 +1586,9 @@ export function usePetController(): PetController {
           emitNestSnapshotRef.current(progress);
         }
         dispatchBehaviorStepRef.current(step);
+        if (step && !behaviorSchedulerRef.current.isActive()) {
+          clearBehaviorExpressionRef.current();
+        }
       }, 5_000);
 
       // 只保留光标活动的粗粒度统计，不记录坐标或轨迹。
@@ -1590,7 +1618,7 @@ export function usePetController(): PetController {
 
         const say = (id: string, text: string) => {
           reminderCounterRef.current += 1;
-          behaviorSchedulerRef.current.cancel();
+          cancelBehaviorPlanRef.current();
           actor.send({
             type: "SHOW_DIALOGUE",
             dialogue: {
@@ -1858,7 +1886,7 @@ export function usePetController(): PetController {
   // ---------- 交互 ----------
   const onPetClick = useCallback(
     ({ target, point }: PetTouchInteraction) => {
-      behaviorSchedulerRef.current.cancel();
+      cancelBehaviorPlanRef.current();
       setEffectEvent((current) => ({
         revision: current.revision + 1,
         anchor: point,
@@ -1898,7 +1926,7 @@ export function usePetController(): PetController {
   );
 
   const onPetDragStart = useCallback(() => {
-    behaviorSchedulerRef.current.cancel();
+    cancelBehaviorPlanRef.current();
     setDragMotion(STILL_DRAG_MOTION);
     actor.send({ type: "DRAG_START" });
   }, [actor]);
@@ -1908,7 +1936,7 @@ export function usePetController(): PetController {
   }, []);
 
   const onPetDragEnd = useCallback((release: DragRelease) => {
-    behaviorSchedulerRef.current.cancel();
+    cancelBehaviorPlanRef.current();
     setDragMotion(STILL_DRAG_MOTION);
     setDragRelease(release);
     setEffectEvent((current) => ({
@@ -1934,6 +1962,13 @@ export function usePetController(): PetController {
   }, [actor]);
 
   const onAnimationFinished = useCallback(() => {
+    const advanceBehavior = () => {
+      const next = behaviorSchedulerRef.current.onAnimationFinished(Date.now());
+      dispatchBehaviorStepRef.current(next);
+      if (!behaviorSchedulerRef.current.isActive()) {
+        clearBehaviorExpressionRef.current();
+      }
+    };
     const edgeSession = edgePeekSessionRef.current;
     if (edgeSession) {
       edgePeekSessionRef.current = null;
@@ -1941,34 +1976,30 @@ export function usePetController(): PetController {
         programmaticWindowMoveRef.current = false;
         setEdgePeekSide(null);
         actor.send({ type: "ANIMATION_FINISHED" });
-        dispatchBehaviorStepRef.current(
-          behaviorSchedulerRef.current.onAnimationFinished(Date.now()),
-        );
+        advanceBehavior();
       });
       return;
     }
     actor.send({ type: "ANIMATION_FINISHED" });
-    dispatchBehaviorStepRef.current(
-      behaviorSchedulerRef.current.onAnimationFinished(Date.now()),
-    );
+    advanceBehavior();
   }, [actor]);
 
   const onHoldStart = useCallback(() => {
     if (!animationRef.current.petting) return;
-    behaviorSchedulerRef.current.cancel();
+    cancelBehaviorPlanRef.current();
     recordRelationshipEventRef.current("petting");
     actor.send({ type: "HOLD_START" });
     setHearts(true);
   }, [actor]);
 
   const onHoldEnd = useCallback(() => {
-    behaviorSchedulerRef.current.cancel();
+    cancelBehaviorPlanRef.current();
     actor.send({ type: "HOLD_END" });
     setHearts(false);
   }, [actor]);
 
   const openSettings = useCallback(() => {
-    behaviorSchedulerRef.current.cancel();
+    cancelBehaviorPlanRef.current();
     settingsOpenRef.current = true;
     setSettingsOpen(true);
   }, []);
@@ -2074,7 +2105,7 @@ export function usePetController(): PetController {
       behaviorNeedsAtRef.current = now;
       behaviorSchedulerRef.current.reset();
       interactionContextRef.current = emptyInteractionContext();
-      setBehaviorThought(null);
+      clearBehaviorExpressionRef.current();
       const entries = engineRef.current?.entries ?? [];
       engineRef.current = new DialogueEngine(entries, fresh.dialogue);
       installedAtRef.current = new Date(now);
@@ -2112,6 +2143,8 @@ export function usePetController(): PetController {
     motion,
     bubble,
     behaviorThought,
+    behaviorMicroCue,
+    behaviorGazeOverride,
     followUp,
     settingsOpen,
     dnd,

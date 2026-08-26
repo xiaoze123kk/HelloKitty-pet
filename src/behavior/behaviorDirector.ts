@@ -1,7 +1,6 @@
 import { chooseBehaviorDecision } from "./behaviorEngine";
-import { autonomousMotionForEvent } from "./motionHistory";
+import { resolveExpressionPlan } from "./expressionDirector";
 import type {
-  AutonomousMotionId,
   BehaviorDecision,
   BehaviorDecisionInput,
   BehaviorId,
@@ -185,61 +184,8 @@ export function directBehavior(
   };
 }
 
-const AFFINITY: Partial<Record<AutonomousMotionId, readonly AutonomousMotionId[]>> = {
-  peek: ["look"],
-  edgePeek: ["look"],
-  walk: ["look"],
-  nod: ["yawn", "sway"],
-  jump: ["sway"],
-  spin: ["peek", "jump"],
-  dizzy: ["spin"],
-  sleep: ["yawn", "nod"],
-};
-
-function adjustedCandidate(
-  candidate: ExpressionCandidate,
-  history: readonly AutonomousMotionId[],
-): ExpressionCandidate {
-  const motion = autonomousMotionForEvent(candidate.event.type);
-  if (!motion) return candidate;
-  let weight = candidate.weight;
-  if (history.at(-1) === motion) weight *= 0.25;
-  if (history.slice(-4).filter((item) => item === motion).length >= 2) weight *= 0.5;
-  if (!history.slice(-6).includes(motion)) weight *= 1.1;
-  const previous = history.at(-1);
-  if (previous && AFFINITY[motion]?.includes(previous)) weight *= 1.2;
-  return { ...candidate, weight };
-}
-
-export function resolveDirectedPlan(
-  directed: DirectedBehaviorPlan,
-  input: BehaviorDecisionInput,
-): BehaviorPlan {
-  const random = input.random ?? Math.random;
-  const history = input.context.recentMotions.map((entry) => entry.id);
-  const steps = directed.beats.map((currentBeat) => {
-    const selected = weighted(
-      currentBeat.candidates.map((candidate) => adjustedCandidate(candidate, history)),
-      random,
-    );
-    const motion = autonomousMotionForEvent(selected.event.type);
-    if (motion) history.push(motion);
-    return {
-      event: selected.event,
-      waitForAnimation: selected.waitForAnimation,
-      durationMs: selected.durationMs,
-    };
-  });
-  return {
-    id: directed.id,
-    intent: directed.intent,
-    steps,
-    cooldownMs: directed.cooldownMs,
-  };
-}
-
 export function chooseBehaviorPlan(input: BehaviorDecisionInput): BehaviorPlan | null {
   const decision = chooseBehaviorDecision(input);
   if (!decision) return null;
-  return resolveDirectedPlan(directBehavior(decision, input), input);
+  return resolveExpressionPlan(directBehavior(decision, input), input);
 }

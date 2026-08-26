@@ -110,9 +110,12 @@ export function PetApp() {
           dragMotion={controller.dragMotion}
           dragRelease={controller.dragRelease}
           microMotion={controller.animationPrefs.microMotion}
+          microCueOverride={controller.behaviorMicroCue}
           onFinished={controller.onAnimationFinished}
           gazeFollow={
-            controller.animationPrefs.gazeFollow && !controller.settingsOpen
+            controller.animationPrefs.gazeFollow &&
+            !controller.settingsOpen &&
+            (controller.behaviorGazeOverride ?? true)
           }
         />
       </InteractionArea>

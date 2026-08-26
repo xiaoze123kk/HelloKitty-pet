@@ -47,6 +47,17 @@ const motionHistoryCompiled = ts.transpileModule(motionHistorySource, {
   compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext },
 }).outputText;
 const motionHistoryUrl = `data:text/javascript;base64,${Buffer.from(motionHistoryCompiled).toString("base64")}`;
+const motionHistory = await import(motionHistoryUrl);
+const expressionSource = await fs.readFile(
+  new URL("../src/behavior/expressionDirector.ts", import.meta.url),
+  "utf8",
+);
+let expressionCompiled = ts.transpileModule(expressionSource, {
+  compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext },
+}).outputText;
+expressionCompiled = expressionCompiled.replaceAll('"./motionHistory"', `"${motionHistoryUrl}"`);
+const expressionUrl = `data:text/javascript;base64,${Buffer.from(expressionCompiled).toString("base64")}`;
+const expression = await import(expressionUrl);
 const directorSource = await fs.readFile(
   new URL("../src/behavior/behaviorDirector.ts", import.meta.url),
   "utf8",
@@ -55,7 +66,7 @@ let directorCompiled = ts.transpileModule(directorSource, {
   compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext },
 }).outputText;
 directorCompiled = directorCompiled.replaceAll('"./behaviorEngine"', `"${engineUrl}"`);
-directorCompiled = directorCompiled.replaceAll('"./motionHistory"', `"${motionHistoryUrl}"`);
+directorCompiled = directorCompiled.replaceAll('"./expressionDirector"', `"${expressionUrl}"`);
 const directorUrl = `data:text/javascript;base64,${Buffer.from(directorCompiled).toString("base64")}`;
 const director = await import(directorUrl);
 const schedulerModule = await loadTsWithImports("../src/behavior/behaviorScheduler.ts", {
@@ -98,6 +109,9 @@ const context = {
   timeBand: "day",
   sessionPhase: "settled",
   recentInteractionPattern: { total: 0, headpatRatio: 0, teaseRatio: 0 },
+  microMotionEnabled: true,
+  gazeFollowEnabled: true,
+  reducedMotion: false,
 };
 
 const quietInput = {
@@ -180,6 +194,45 @@ const attention = director.chooseBehaviorPlan({
 });
 assert.equal(attention?.id, "seek_attention");
 assert.deepEqual(attention?.steps.map((step) => step.event.type), ["IDLE_LOOK", "EDGE_PEEK"]);
+assert.equal(attention?.steps[0]?.gaze, "user");
+assert.ok(attention?.steps[0]?.microCue);
+
+const expressiveInput = {
+  needs: { energy: 0.8, sleepiness: 0.1, socialNeed: 1, boredom: 0.8, curiosity: 0.5 },
+  context,
+  relationship,
+  cooldowns: {},
+  random: () => 0,
+};
+const expressiveDecision = engine.chooseBehaviorDecision(expressiveInput);
+assert.equal(expressiveDecision?.id, "seek_attention");
+const directedAttention = director.directBehavior(expressiveDecision, expressiveInput);
+const expressiveAttention = expression.resolveExpressionPlan(directedAttention, expressiveInput);
+assert.equal(expressiveAttention.steps[0]?.microCue, "ear-left");
+assert.equal(expressiveAttention.steps[0]?.gaze, "user");
+assert.equal(expressiveAttention.steps[0]?.thought, "偷偷看看你。");
+const reducedAttention = expression.resolveExpressionPlan(directedAttention, {
+  ...expressiveInput,
+  context: { ...context, reducedMotion: true },
+});
+assert.equal(reducedAttention.steps[0]?.microCue, null);
+assert.equal(reducedAttention.steps[0]?.gaze, "neutral");
+const dndAttention = expression.resolveExpressionPlan(directedAttention, {
+  ...expressiveInput,
+  context: { ...context, dnd: true },
+});
+assert.equal(dndAttention.steps[0]?.thought, null);
+const alternateAttention = expression.resolveExpressionPlan(directedAttention, {
+  ...expressiveInput,
+  random: () => 0.999,
+});
+assert.notEqual(
+  alternateAttention.steps[1]?.event.type,
+  expressiveAttention.steps[1]?.event.type,
+  "同一 seek_attention intent 应能受控解析为不同现有 motion",
+);
+assert.equal(expression.behaviorThoughtCooldownReady(100_000, 279_999), false);
+assert.equal(expression.behaviorThoughtCooldownReady(100_000, 280_000), true);
 
 const cooldownBlocked = director.chooseBehaviorPlan({
   needs: { energy: 0.05, sleepiness: 1, socialNeed: 0.1, boredom: 0.05, curiosity: 0.1 },
@@ -327,5 +380,53 @@ assert.equal(
   "EDGE_PEEK",
   "等待动画超过 5 秒后应推进下一步",
 );
+
+let simulationSeed = 0x12_04_26;
+const simulationRandom = () => {
+  simulationSeed = (simulationSeed * 1_664_525 + 1_013_904_223) >>> 0;
+  return simulationSeed / 0x1_0000_0000;
+};
+const simulatedBehaviors = [];
+const simulatedMotions = [];
+for (let index = 0; index < 80; index += 1) {
+  const now = context.now + index * 200_000;
+  const simulatedContext = {
+    ...context,
+    now,
+    recentBehaviors: simulatedBehaviors.slice(-120),
+    recentMotions: simulatedMotions.slice(-120),
+  };
+  const plan = director.chooseBehaviorPlan({
+    needs: {
+      energy: 0.72,
+      sleepiness: 0.2,
+      socialNeed: 0.45,
+      boredom: 0.65,
+      curiosity: 0.7,
+    },
+    context: simulatedContext,
+    relationship,
+    cooldowns: {},
+    random: simulationRandom,
+  });
+  assert.ok(plan, "固定种子模拟应始终找到合格行为");
+  assert.notEqual(
+    plan.id,
+    simulatedBehaviors.at(-1)?.id,
+    "固定种子模拟不应连续重复同一高层行为",
+  );
+  simulatedBehaviors.push({ id: plan.id, at: now, date: "2026-08-26" });
+  for (const step of plan.steps) {
+    const motion = motionHistory.autonomousMotionForEvent(step.event.type);
+    if (!motion) continue;
+    assert.notEqual(
+      motion,
+      simulatedMotions.at(-1)?.id,
+      `第 ${index + 1} 轮 ${plan.id} 不应连续派发同一自主 motion`,
+    );
+    simulatedMotions.push({ id: motion, at: now, date: "2026-08-26" });
+  }
+}
+assert.ok(new Set(simulatedBehaviors.map((entry) => entry.id)).size >= 4);
 
 console.log("behavior checks passed");

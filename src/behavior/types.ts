@@ -3,6 +3,7 @@ import type { PetTouchTargetId } from "../pet/touchZones";
 import type { RelationshipContext } from "../relationship/relationshipEngine";
 import type { RelationshipEventType } from "../relationship/relationshipEngine";
 import type { RelationshipStage } from "../relationship/reactionEngine";
+import type { MicroCue } from "../pet/microMotion";
 
 export type BehaviorId =
   | "sleep"
@@ -101,6 +102,9 @@ export interface ContextSnapshot {
   timeBand: TimeBand;
   sessionPhase: SessionPhase;
   recentInteractionPattern: RecentInteractionPattern;
+  microMotionEnabled: boolean;
+  gazeFollowEnabled: boolean;
+  reducedMotion: boolean;
 }
 
 export interface PersonalityProfile {
@@ -133,13 +137,20 @@ export type BehaviorEventType =
 
 export type BehaviorEvent = Extract<PetEvent, { type: BehaviorEventType }>;
 
-export interface BehaviorStep {
+export type ExpressionGaze = "user" | "neutral";
+
+export interface ExpressionDirective {
   event: BehaviorEvent;
   /** Wait for the existing animation completion callback before advancing. */
   waitForAnimation?: boolean;
   /** For non-animation events such as a short walk, advance after this duration. */
   durationMs?: number;
+  microCue: MicroCue | null;
+  gaze: ExpressionGaze;
+  thought: string | null;
 }
+
+export type BehaviorStep = ExpressionDirective;
 
 export type BehaviorMood = "calm" | "curious" | "playful" | "sleepy";
 export type BehaviorTarget = "self" | "user" | "edge";

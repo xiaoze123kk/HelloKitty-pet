@@ -72,6 +72,10 @@ export class BehaviorScheduler {
     return started;
   }
 
+  isActive(): boolean {
+    return this.active !== null;
+  }
+
   onAnimationFinished(now: number): BehaviorStep | null {
     if (!this.active || !this.active.waitingForAnimation) return null;
     return this.advance(now);
