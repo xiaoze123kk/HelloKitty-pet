@@ -67,6 +67,17 @@ function AccessoryLayer({
   item: AccessoryDefinition;
   motion: PetVisualMotion;
 }) {
+  const backgroundStyle = item.imageUrl
+    ? {
+        backgroundImage: `url("${item.imageUrl}")`,
+        backgroundSize: "100% 100%",
+        backgroundPosition: "center",
+      }
+    : {
+        backgroundImage: `url("${WARDROBE_ATLAS_URL}")`,
+        backgroundSize: "200% 300%",
+        backgroundPosition: `${(item.cell?.column ?? 0) * 100}% ${(item.cell?.row ?? 0) * 50}%`,
+      };
   return (
     <span
       className="pet-accessory-pose pet-layer-accessory-pose"
@@ -81,9 +92,7 @@ function AccessoryLayer({
             top: item.placement.y,
             width: item.placement.width,
             height: item.placement.height,
-            backgroundImage: `url("${WARDROBE_ATLAS_URL}")`,
-            backgroundSize: "200% 300%",
-            backgroundPosition: `${item.cell.column * 100}% ${item.cell.row * 50}%`,
+            ...backgroundStyle,
           }}
         />
       </span>

@@ -48,6 +48,16 @@ assert.equal(end.previousAlpha, 0);
 assert.equal(end.nextAlpha, 1);
 assert.equal(end.done, true);
 
+const spinHandoff = transition.motionTransitionFrame(
+  { scale: 1, scaleY: 1, angle: 360, dy: 0 },
+  { scale: 1, scaleY: 1, angle: 0, dy: 0 },
+  50,
+);
+assert.ok(
+  Math.abs(spinHandoff.pose.angle - 360) < 1e-9,
+  "spin-to-idle must treat 360deg and 0deg as the same visual angle",
+);
+
 const reduced = transition.motionTransitionFrame(previous, next, 0, true);
 assert.deepEqual(reduced.pose, next);
 assert.equal(reduced.done, true);

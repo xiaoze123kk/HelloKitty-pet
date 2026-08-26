@@ -5,6 +5,7 @@ import {
   WARDROBE_ATLAS_URL,
   wardrobeSnapshot,
   type AccessoryId,
+  type WardrobeItemSnapshot,
 } from "../growth/wardrobe";
 import {
   MAX_USER_MEMORIES,
@@ -215,6 +216,15 @@ export function NestWindow({ preview = false }: { preview?: boolean }) {
     backgroundPosition: `${column * 100}% ${row * 50}%`,
   });
 
+  const accessoryImageStyle = (item: WardrobeItemSnapshot) =>
+    item.imageUrl
+      ? {
+          backgroundImage: `url("${item.imageUrl}")`,
+          backgroundSize: "100% 100%",
+          backgroundPosition: "center",
+        }
+      : atlasCellStyle(item.cell?.column ?? 0, item.cell?.row ?? 0);
+
   const requestBackup = (action: "create" | "restore") => {
     if (preview) {
       setBackupMessage("预览模式：运行安装版后可在这里创建本地备份。");
@@ -386,7 +396,7 @@ export function NestWindow({ preview = false }: { preview?: boolean }) {
                   const item = snapshot.wardrobe.items.find((candidate) => candidate.id === snapshot.wardrobe.selectedId);
                   if (!item) return null;
                   return <span className="nest-wardrobe-worn" style={{
-                    ...atlasCellStyle(item.cell.column, item.cell.row),
+                    ...accessoryImageStyle(item),
                     left: `${(item.placement.x / 240) * 100}%`,
                     top: `${(item.placement.y / 240) * 100}%`,
                     width: `${(item.placement.width / 240) * 100}%`,
@@ -405,7 +415,7 @@ export function NestWindow({ preview = false }: { preview?: boolean }) {
                   className={`nest-wardrobe-item ${item.unlocked ? "unlocked" : "locked"} ${snapshot.wardrobe.selectedId === item.id ? "selected" : ""}`}
                   onClick={() => selectAccessory(item.id)}
                 >
-                  <span className="nest-wardrobe-icon" style={atlasCellStyle(item.cell.column, item.cell.row)} />
+                  <span className="nest-wardrobe-icon" style={accessoryImageStyle(item)} />
                   <strong>{item.unlocked ? item.name : "尚未解锁"}</strong>
                   <small>{item.unlocked ? item.description : item.unlockHint}</small>
                 </button>

@@ -95,6 +95,12 @@ assert.equal(
   wardrobe.wardrobeSnapshot(["interactions_100"], "golden_bell").selectedId,
   "golden_bell",
 );
+const pearlPetiteBow = wardrobe.WARDROBE_CATALOG.find(
+  (item) => item.id === "golden_bell",
+);
+assert.equal(pearlPetiteBow?.name, "珍珠小领结");
+assert.equal(pearlPetiteBow?.cell, null);
+assert.match(pearlPetiteBow?.imageUrl ?? "", /pearl-petite-bow\.png/);
 
 const neutralAttachment = attachment.attachmentPoseFor("idle", "chin");
 assert.deepEqual(neutralAttachment, attachment.NEUTRAL_ATTACHMENT_POSE);

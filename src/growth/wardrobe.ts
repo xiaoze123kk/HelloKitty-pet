@@ -30,7 +30,9 @@ export interface AccessoryDefinition {
   description: string;
   unlockMemoryId: string;
   unlockHint: string;
-  cell: AtlasCell;
+  cell: AtlasCell | null;
+  /** 独立透明素材；为空时继续从衣柜图集读取。 */
+  imageUrl?: string;
   /** 大头版本的视觉锚点，避免沿用全身角色的胸口或肩颈坐标。 */
   anchor: AccessoryAnchor;
   placement: AccessoryPlacement;
@@ -112,14 +114,15 @@ export const WARDROBE_CATALOG: readonly AccessoryDefinition[] = [
   },
   {
     id: "golden_bell",
-    name: "金色铃铛",
-    description: "只在熟悉的人靠近时轻轻响。",
+    name: "珍珠小领结",
+    description: "一百次回应，系成了一枚柔软又郑重的小领结。",
     unlockMemoryId: "interactions_100",
     unlockHint: "发现“一百次回应”后获得",
-    cell: { column: 1, row: 2 },
+    cell: null,
+    imageUrl: "/assets/accessories/pearl-petite-bow.png?v=1",
     anchor: "chin",
-    placement: { x: 58, y: 188, width: 124, height: 74 },
-    hitArea: { x: 62, y: 188, width: 116, height: 52 },
+    placement: { x: 56, y: 188, width: 128, height: 78 },
+    hitArea: { x: 62, y: 198, width: 116, height: 58 },
     layer: "front",
   },
 ] as const;

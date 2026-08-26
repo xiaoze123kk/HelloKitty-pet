@@ -4,7 +4,6 @@ import type { PetVisualMotion } from "./animationManifest";
 export type AccessoryReaction =
   | "none"
   | "doze"
-  | "jingle"
   | "sparkle"
   | "bounce"
   | "flutter"
@@ -28,7 +27,7 @@ export function accessoryReactionFor(
       case "moon_cap":
         return "doze";
       case "golden_bell":
-        return "jingle";
+        return "glow";
       case "cloud_clip":
         return "sparkle";
       case "calendar_pin":
@@ -44,7 +43,7 @@ export function accessoryReactionFor(
     accessoryId === "golden_bell" &&
     ["walk", "landing", "headpat", "happy", "reunion", "sway"].includes(motion)
   ) {
-    return "jingle";
+    return "glow";
   }
   if (
     accessoryId === "cloud_clip" &&

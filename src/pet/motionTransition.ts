@@ -31,6 +31,22 @@ function mix(a: number | undefined, b: number | undefined, progress: number) {
   return a + (b - a) * progress;
 }
 
+function mixAngle(
+  previous: number | undefined,
+  next: number | undefined,
+  progress: number,
+) {
+  if (previous === undefined) return next;
+  if (next === undefined) return previous;
+  if (progress <= 0) return previous;
+  if (progress >= 1) return next;
+
+  // Equivalent turns such as 360deg -> 0deg must not interpolate backwards
+  // through 180deg during the motion-to-idle handoff.
+  const shortestDelta = ((next - previous + 540) % 360) - 180;
+  return previous + shortestDelta * progress;
+}
+
 function mixPose(
   previous: MotionKeyframe,
   next: MotionKeyframe,
@@ -39,7 +55,7 @@ function mixPose(
   return {
     scale: mix(previous.scale, next.scale, progress),
     scaleY: mix(previous.scaleY, next.scaleY, progress),
-    angle: mix(previous.angle, next.angle, progress),
+    angle: mixAngle(previous.angle, next.angle, progress),
     dy: mix(previous.dy, next.dy, progress),
     brightness: mix(previous.brightness, next.brightness, progress),
   };

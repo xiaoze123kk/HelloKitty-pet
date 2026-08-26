@@ -455,9 +455,6 @@ body {
 .pet-rig[data-accessory-reaction="doze"] .pet-accessory-overlay {
   animation: accessory-doze 1.35s ease-in-out infinite alternate;
 }
-.pet-rig[data-accessory-reaction="jingle"] .pet-accessory-overlay {
-  animation: accessory-jingle 180ms ease-in-out 4;
-}
 .pet-rig[data-accessory-reaction="bounce"] .pet-accessory-overlay {
   animation: accessory-bounce 420ms cubic-bezier(.2,.8,.2,1) 2;
 }
@@ -584,7 +581,6 @@ body {
 @keyframes edge-lean-top { 0%,100% { transform: translateY(12px); } 50% { transform: translateY(0); } }
 @keyframes edge-lean-bottom { 0%,100% { transform: translateY(-12px); } 50% { transform: translateY(0); } }
 @keyframes accessory-doze { from { rotate: -2deg; translate: 0 0; } to { rotate: 3deg; translate: 0 2px; } }
-@keyframes accessory-jingle { 0%,100% { rotate: 0deg; } 50% { rotate: 8deg; } }
 @keyframes accessory-bounce { 0%,100% { translate: 0 0; } 45% { translate: 0 -7px; } }
 @keyframes accessory-flutter { from { rotate: -4deg; } to { rotate: 5deg; } }
 @keyframes accessory-glow { 0%,100% { filter: brightness(var(--pose-brightness)); } 45% { filter: brightness(1.3) drop-shadow(0 0 7px #ffbad2); } }

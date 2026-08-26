@@ -88,11 +88,11 @@ assert.equal(
 );
 
 assert.equal(layered.accessoryReactionFor("moon_cap", "sleep"), "doze");
-assert.equal(layered.accessoryReactionFor("golden_bell", "headpat"), "jingle");
+assert.equal(layered.accessoryReactionFor("golden_bell", "headpat"), "glow");
 assert.equal(layered.accessoryReactionFor("cloud_clip", "celebrate"), "sparkle");
 assert.equal(layered.accessoryReactionFor(null, "celebrate"), "none");
 assert.equal(layered.accessoryReactionFor("moon_cap", "accessoryTouch"), "doze");
-assert.equal(layered.accessoryReactionFor("golden_bell", "accessoryTouch"), "jingle");
+assert.equal(layered.accessoryReactionFor("golden_bell", "accessoryTouch"), "glow");
 assert.equal(layered.accessoryReactionFor("cloud_clip", "accessoryTouch"), "sparkle");
 
 console.log("reaction checks passed");

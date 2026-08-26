@@ -168,7 +168,7 @@ export const MEMORY_CATALOG: readonly MemoryDefinition[] = [
     title: "一百次回应",
     description: "一百次小小的回应，拼成了稳定而熟悉的陪伴。",
     hint: "累计互动 100 次",
-    keepsake: { id: "golden_bell", name: "金色铃铛", icon: "🔔", description: "只在特别熟悉的人靠近时轻响。" },
+    keepsake: { id: "golden_bell", name: "珍珠小领结", icon: "🎀", description: "一百次回应，系成了一枚柔软又郑重的小领结。" },
   },
   {
     id: "days_30",
