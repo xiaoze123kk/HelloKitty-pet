@@ -50,6 +50,7 @@ function AccessoryLayer({ item }: { item: AccessoryDefinition }) {
     <span
       className="pet-accessory-pose pet-layer-accessory-pose"
       data-layer={item.layer}
+      data-anchor={item.anchor}
     >
       <span
         className="pet-accessory-overlay"

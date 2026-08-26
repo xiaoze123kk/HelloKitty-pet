@@ -29,6 +29,8 @@ export interface AccessoryDefinition {
   unlockMemoryId: string;
   unlockHint: string;
   cell: AtlasCell;
+  /** 大头版本的视觉锚点，避免沿用全身角色的胸口或肩颈坐标。 */
+  anchor: "temple" | "crown" | "chin";
   placement: AccessoryPlacement;
   /** 透明图集单元内真正可点击的可见区域。 */
   hitArea: AccessoryHitArea;
@@ -53,6 +55,7 @@ export const WARDROBE_CATALOG: readonly AccessoryDefinition[] = [
     unlockMemoryId: "first_interaction",
     unlockHint: "发现“第一次回应”后获得",
     cell: { column: 0, row: 0 },
+    anchor: "temple",
     placement: { x: 29, y: 87, width: 48, height: 48 },
     hitArea: { x: 31, y: 89, width: 44, height: 44 },
     layer: "front",
@@ -64,8 +67,9 @@ export const WARDROBE_CATALOG: readonly AccessoryDefinition[] = [
     unlockMemoryId: "headpat_10",
     unlockHint: "发现“最熟悉的位置”后获得",
     cell: { column: 1, row: 0 },
-    placement: { x: 25, y: 26, width: 78, height: 58 },
-    hitArea: { x: 27, y: 28, width: 74, height: 54 },
+    anchor: "temple",
+    placement: { x: 3, y: 18, width: 110, height: 82 },
+    hitArea: { x: 8, y: 22, width: 96, height: 72 },
     layer: "front",
   },
   {
@@ -75,8 +79,9 @@ export const WARDROBE_CATALOG: readonly AccessoryDefinition[] = [
     unlockMemoryId: "streak_3",
     unlockHint: "发现“连续的三天”后获得",
     cell: { column: 0, row: 1 },
-    placement: { x: 27, y: 88, width: 52, height: 52 },
-    hitArea: { x: 29, y: 90, width: 48, height: 48 },
+    anchor: "temple",
+    placement: { x: 10, y: 45, width: 66, height: 66 },
+    hitArea: { x: 14, y: 49, width: 58, height: 58 },
     layer: "front",
   },
   {
@@ -86,17 +91,19 @@ export const WARDROBE_CATALOG: readonly AccessoryDefinition[] = [
     unlockMemoryId: "late_night_companion",
     unlockHint: "发现“深夜还亮着的灯”后获得",
     cell: { column: 1, row: 1 },
-    placement: { x: 57, y: -2, width: 126, height: 96 },
-    hitArea: { x: 60, y: 0, width: 120, height: 90 },
+    anchor: "crown",
+    placement: { x: -4, y: -8, width: 144, height: 108 },
+    hitArea: { x: 0, y: 0, width: 136, height: 98 },
     layer: "front",
   },
   {
     id: "ribbon_scarf",
-    name: "缎带围巾",
+    name: "粉色领结",
     description: "抓不到的光点变成了轻软缎带。",
     unlockMemoryId: "tease_10",
     unlockHint: "发现“抓不到的光点”后获得",
     cell: { column: 0, row: 2 },
+    anchor: "chin",
     placement: { x: 62, y: 190, width: 116, height: 74 },
     hitArea: { x: 70, y: 212, width: 100, height: 28 },
     layer: "behind",
@@ -108,6 +115,7 @@ export const WARDROBE_CATALOG: readonly AccessoryDefinition[] = [
     unlockMemoryId: "interactions_100",
     unlockHint: "发现“一百次回应”后获得",
     cell: { column: 1, row: 2 },
+    anchor: "chin",
     placement: { x: 58, y: 188, width: 124, height: 74 },
     hitArea: { x: 62, y: 188, width: 116, height: 52 },
     layer: "front",

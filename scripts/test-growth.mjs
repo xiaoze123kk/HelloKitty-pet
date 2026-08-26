@@ -28,6 +28,33 @@ assert.ok(
   wardrobe.WARDROBE_CATALOG.every((item) => item.unlockMemoryId),
   "every accessory must have a relationship unlock",
 );
+for (const item of wardrobe.WARDROBE_CATALOG) {
+  assert.ok(
+    item.hitArea.x >= item.placement.x &&
+      item.hitArea.y >= item.placement.y &&
+      item.hitArea.x + item.hitArea.width <=
+        item.placement.x + item.placement.width &&
+      item.hitArea.y + item.hitArea.height <=
+        item.placement.y + item.placement.height,
+    `${item.id} hit area must stay inside its visible placement`,
+  );
+  if (item.anchor === "chin") {
+    assert.equal(
+      item.placement.x + item.placement.width / 2,
+      120,
+      `${item.id} must hang from the center of the big-head canvas`,
+    );
+    assert.ok(
+      item.placement.y >= 188,
+      `${item.id} must attach directly below the chin`,
+    );
+  } else {
+    assert.ok(
+      item.placement.y + item.placement.height <= 140,
+      `${item.id} must remain on the head instead of drifting toward the body`,
+    );
+  }
+}
 assert.equal(
   wardrobe.wardrobeSnapshot([], "golden_bell").selectedId,
   null,
