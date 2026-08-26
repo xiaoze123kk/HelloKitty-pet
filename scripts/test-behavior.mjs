@@ -21,14 +21,24 @@ async function loadTsWithImports(path, replacements) {
   return import(`data:text/javascript;base64,${Buffer.from(compiled).toString("base64")}`);
 }
 
-const engine = await loadTs("../src/behavior/behaviorEngine.ts");
 const needs = await loadTs("../src/behavior/needs.ts");
 const behaviorContext = await loadTs("../src/context/behaviorContext.ts");
-const engineSource = await fs.readFile(new URL("../src/behavior/behaviorEngine.ts", import.meta.url), "utf8");
-const engineCompiled = ts.transpileModule(engineSource, {
+const personalitySource = await fs.readFile(
+  new URL("../src/behavior/personality.ts", import.meta.url),
+  "utf8",
+);
+const personalityCompiled = ts.transpileModule(personalitySource, {
   compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext },
 }).outputText;
+const personalityUrl = `data:text/javascript;base64,${Buffer.from(personalityCompiled).toString("base64")}`;
+const personality = await import(personalityUrl);
+const engineSource = await fs.readFile(new URL("../src/behavior/behaviorEngine.ts", import.meta.url), "utf8");
+let engineCompiled = ts.transpileModule(engineSource, {
+  compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext },
+}).outputText;
+engineCompiled = engineCompiled.replaceAll('"./personality"', `"${personalityUrl}"`);
 const engineUrl = `data:text/javascript;base64,${Buffer.from(engineCompiled).toString("base64")}`;
+const engine = await import(engineUrl);
 const motionHistorySource = await fs.readFile(
   new URL("../src/behavior/motionHistory.ts", import.meta.url),
   "utf8",
@@ -87,7 +97,37 @@ const context = {
   relationshipStage: "familiar",
   timeBand: "day",
   sessionPhase: "settled",
+  recentInteractionPattern: { total: 0, headpatRatio: 0, teaseRatio: 0 },
 };
+
+const quietInput = {
+  needs: { energy: 0.8, sleepiness: 0.2, socialNeed: 0.2, boredom: 0.2, curiosity: 0.5 },
+  context,
+};
+const quietBefore = structuredClone(quietInput);
+const quietPersonality = personality.deriveEffectivePersonality(quietInput);
+assert.deepEqual(quietInput, quietBefore, "人格推导不得修改输入或持久状态");
+assert.ok(quietPersonality.patience > personality.BASE_PERSONALITY.patience);
+assert.ok(quietPersonality.playfulness < personality.BASE_PERSONALITY.playfulness);
+const playfulPersonality = personality.deriveEffectivePersonality({
+  ...quietInput,
+  context: {
+    ...context,
+    recentInteractionPattern: { total: 12, headpatRatio: 0.25, teaseRatio: 0.75 },
+  },
+});
+assert.ok(playfulPersonality.playfulness > quietPersonality.playfulness);
+const sleepyPersonality = personality.deriveEffectivePersonality({
+  ...quietInput,
+  needs: { ...quietInput.needs, sleepiness: 1 },
+});
+assert.ok(sleepyPersonality.playfulness < quietPersonality.playfulness);
+for (const key of Object.keys(personality.BASE_PERSONALITY)) {
+  assert.ok(
+    Math.abs(sleepyPersonality[key] - personality.BASE_PERSONALITY[key]) <= 0.150_001,
+    `effective ${key} offset must stay bounded`,
+  );
+}
 
 const freshScores = engine.scoreBehaviors({
   needs: { energy: 0.8, sleepiness: 0.1, socialNeed: 0.2, boredom: 0.2, curiosity: 1 },

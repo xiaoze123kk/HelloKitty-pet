@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "KittyPet",
-  "version": "0.12.2",
+  "version": "0.12.3",
   "identifier": "com.kittypet.app",
   "build": {
     "beforeDevCommand": "node scripts/sync-personalization.mjs && node node_modules/vite/bin/vite.js",

@@ -545,6 +545,24 @@ export function usePetController(): PetController {
     const sessionMinutes = progress ? (now - progress.sessionStart) / 60_000 : 0;
     const relationship = progress ? relationshipContext(progress, now) : null;
     const interaction = interactionContextRef.current;
+    const recentRelationshipEvents =
+      progress?.relationship.recentEvents.filter(
+        (event) => event.type !== "session_start" && event.at >= now - 7 * 86_400_000,
+      ) ?? [];
+    const recentInteractionTotal = recentRelationshipEvents.length;
+    const recentInteractionPattern = {
+      total: recentInteractionTotal,
+      headpatRatio:
+        recentInteractionTotal === 0
+          ? 0
+          : recentRelationshipEvents.filter((event) => event.type === "headpat").length /
+            recentInteractionTotal,
+      teaseRatio:
+        recentInteractionTotal === 0
+          ? 0
+          : recentRelationshipEvents.filter((event) => event.type === "tease").length /
+            recentInteractionTotal,
+    };
     return {
       now,
       hour: date.getHours(),
@@ -569,6 +587,7 @@ export function usePetController(): PetController {
       relationshipStage: relationship ? relationshipStage(relationship) : "new",
       timeBand: timeBandFor(date.getHours()),
       sessionPhase: sessionPhaseFor(sessionMinutes, sessionAbsenceDaysRef.current),
+      recentInteractionPattern,
     };
   }, [actor]);
   const behaviorContextRef = useRef(behaviorContext);

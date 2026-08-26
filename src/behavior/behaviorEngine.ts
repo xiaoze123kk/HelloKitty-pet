@@ -4,14 +4,7 @@ import type {
   BehaviorId,
   BehaviorScoreBreakdown,
 } from "./types";
-
-const PERSONALITY = {
-  sociability: 0.72,
-  curiosity: 0.65,
-  sleepiness: 0.58,
-  playfulness: 0.76,
-  patience: 0.62,
-} as const;
+import { BASE_PERSONALITY, deriveEffectivePersonality } from "./personality";
 
 interface ScoreComponents {
   base: number;
@@ -32,24 +25,25 @@ function scoreComponents(
   );
   const headpatAffinity = relationship.headpatRatio;
   const interactionLoad = Math.min(1, context.todayInteractions / 16);
+  const personality = deriveEffectivePersonality(input);
   return {
     sleep: {
       base: needs.sleepiness * 0.75 + (1 - needs.energy) * 0.35,
       context: lateNight * 0.28,
       relationship: 0,
-      personality: needs.sleepiness * PERSONALITY.sleepiness * 0.2,
+      personality: needs.sleepiness * personality.sleepiness * 0.2,
     },
     rest: {
       base: needs.sleepiness * 0.4 + (1 - needs.energy) * 0.28,
       context: (1 - interactionLoad) * 0.08,
       relationship: 0,
-      personality: 0,
+      personality: (personality.patience - BASE_PERSONALITY.patience) * 0.3,
     },
     observe: {
       base: needs.curiosity * 0.1,
       context: userBusy * 0.08,
       relationship: headpatAffinity * 0.2,
-      personality: needs.curiosity * PERSONALITY.curiosity * 0.35,
+      personality: needs.curiosity * personality.curiosity * 0.35,
     },
     seek_attention: {
       base: needs.boredom * 0.28,
@@ -58,19 +52,19 @@ function scoreComponents(
         headpatAffinity * 0.2 +
         comfort * 0.08 +
         Math.min(1, relationship.absenceDays) * 0.18,
-      personality: needs.socialNeed * PERSONALITY.sociability * 0.8,
+      personality: needs.socialNeed * personality.sociability * 0.8,
     },
     groom: {
       base: needs.boredom * 0.25 + needs.energy * 0.2 + 0.18,
       context: 0,
       relationship: 0,
-      personality: 0,
+      personality: (personality.patience - BASE_PERSONALITY.patience) * 0.25,
     },
     self_play: {
       base: needs.curiosity * 0.35 - needs.socialNeed * 0.18,
       context: 0,
       relationship: 0,
-      personality: needs.boredom * PERSONALITY.playfulness * 0.65,
+      personality: needs.boredom * personality.playfulness * 0.65,
     },
     explore: {
       base: needs.curiosity * 0.5 + needs.boredom * 0.35,

@@ -52,6 +52,10 @@ v0.12.2 增加独立 Behavior Director：行为脑只选择高层意图，导演
 现有动作，入睡最多包含三个前置动作。look、peek、walk、jump、spin 等会形成克制的连续片段，
 具体动作候选继续受近期 motion 重复惩罚和自然衔接 affinity 约束。
 
+v0.12.3 把固定性格升级为实时推导的 Effective Personality：关系阶段、最近七天的摸头/逗猫构成、
+当前互动连续度和困意会温和改变表达倾向。低互动只让 Kitty 更耐心、更偏向休息、观察和整理自己，
+不会保存成长属性、降低关系或制造“没有打开软件就亏欠它”的压力。
+
 **技术栈**：Tauri 2 · React 19 · TypeScript · Vite 7 · XState 5 · Tauri Store / Autostart 插件
 
 > ⚠️ 合规约定：本仓库只包含桌宠引擎和"示例私人内容"。昵称、纪念日、私人对白和角色素材

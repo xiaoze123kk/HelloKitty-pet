@@ -69,6 +69,12 @@ export interface BehaviorStateData {
 export type TimeBand = "morning" | "day" | "evening" | "lateNight";
 export type SessionPhase = "justOpened" | "settled" | "longSession" | "returning";
 
+export interface RecentInteractionPattern {
+  total: number;
+  headpatRatio: number;
+  teaseRatio: number;
+}
+
 export interface ContextSnapshot {
   now: number;
   hour: number;
@@ -94,6 +100,15 @@ export interface ContextSnapshot {
   relationshipStage: RelationshipStage;
   timeBand: TimeBand;
   sessionPhase: SessionPhase;
+  recentInteractionPattern: RecentInteractionPattern;
+}
+
+export interface PersonalityProfile {
+  sociability: number;
+  curiosity: number;
+  sleepiness: number;
+  playfulness: number;
+  patience: number;
 }
 
 export type BehaviorEventType =
