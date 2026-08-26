@@ -1,4 +1,4 @@
-import { chooseBehavior } from "./behaviorEngine";
+import { chooseBehaviorPlan } from "./behaviorDirector";
 import type {
   BehaviorId,
   BehaviorPlan,
@@ -54,7 +54,7 @@ export class BehaviorScheduler {
       return null;
     }
 
-    const plan = chooseBehavior({ ...input, cooldowns: this.cooldowns });
+    const plan = chooseBehaviorPlan({ ...input, cooldowns: this.cooldowns });
     if (!plan) return null;
     this.active = {
       plan,

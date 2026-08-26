@@ -1,9 +1,7 @@
 import type {
   BehaviorDecisionInput,
   BehaviorDecision,
-  BehaviorEvent,
   BehaviorId,
-  BehaviorPlan,
   BehaviorScoreBreakdown,
 } from "./types";
 
@@ -14,87 +12,6 @@ const PERSONALITY = {
   playfulness: 0.76,
   patience: 0.62,
 } as const;
-
-const IDLE_ACTIONS: readonly BehaviorEvent[] = [
-  { type: "IDLE_SPIN" },
-  { type: "IDLE_JUMP" },
-  { type: "IDLE_SWAY" },
-];
-
-const plan = (
-  id: BehaviorId,
-  event: BehaviorEvent,
-  cooldownMs: number,
-): BehaviorPlan => ({
-  id,
-  cooldownMs,
-  steps: [{ event, waitForAnimation: true }],
-});
-
-function buildPlan(
-  id: BehaviorId,
-  random: () => number,
-  input: BehaviorDecisionInput,
-): BehaviorPlan {
-  switch (id) {
-    case "sleep":
-      return {
-        id,
-        cooldownMs: 120_000,
-        steps: [
-          { event: { type: "IDLE_YAWN" }, waitForAnimation: true },
-          { event: { type: "BEGIN_SLEEP" }, waitForAnimation: false },
-        ],
-      };
-    case "rest":
-      return plan(id, { type: "IDLE_NOD" }, 75_000);
-    case "observe":
-      return plan(id, { type: "IDLE_LOOK" }, 45_000);
-    case "seek_attention":
-      return {
-        id,
-        cooldownMs: 90_000,
-        steps: [
-          { event: { type: "IDLE_LOOK" }, waitForAnimation: true },
-          {
-            event: {
-              type:
-                input.relationship.daysTogether >= 3 &&
-                input.context.pointerIdleSeconds >= 75
-                  ? "EDGE_PEEK"
-                  : "IDLE_PEEK",
-            },
-            waitForAnimation: true,
-          },
-        ],
-      };
-    case "groom":
-      return plan(id, { type: "IDLE_WASH" }, 70_000);
-    case "self_play":
-      return plan(
-        id,
-        IDLE_ACTIONS[Math.floor(random() * IDLE_ACTIONS.length)] ?? { type: "IDLE_SWAY" },
-        80_000,
-      );
-    case "explore":
-      return {
-        id,
-        cooldownMs: 150_000,
-        steps: input.context.walkingEnabled
-          ? [
-              { event: { type: "IDLE_LOOK" }, waitForAnimation: true },
-              { event: { type: "WALK_START" }, durationMs: 8_000 },
-              { event: { type: "WALK_STOP" }, waitForAnimation: false },
-            ]
-          : [
-              { event: { type: "IDLE_LOOK" }, waitForAnimation: true },
-              { event: { type: "IDLE_JUMP" }, waitForAnimation: true },
-            ],
-      };
-    case "react_user":
-      return plan(id, { type: "IDLE_LOOK" }, 30_000);
-  }
-}
 
 interface ScoreComponents {
   base: number;
@@ -225,10 +142,4 @@ export function chooseBehaviorDecision(
     winner = { id, score: breakdown.final, breakdown };
   }
   return winner;
-}
-
-export function chooseBehavior(input: BehaviorDecisionInput): BehaviorPlan | null {
-  const random = input.random ?? Math.random;
-  const decision = chooseBehaviorDecision({ ...input, random });
-  return decision ? buildPlan(decision.id, random, input) : null;
 }

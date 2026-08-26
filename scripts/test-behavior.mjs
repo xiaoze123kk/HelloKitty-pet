@@ -29,8 +29,27 @@ const engineCompiled = ts.transpileModule(engineSource, {
   compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext },
 }).outputText;
 const engineUrl = `data:text/javascript;base64,${Buffer.from(engineCompiled).toString("base64")}`;
+const motionHistorySource = await fs.readFile(
+  new URL("../src/behavior/motionHistory.ts", import.meta.url),
+  "utf8",
+);
+const motionHistoryCompiled = ts.transpileModule(motionHistorySource, {
+  compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext },
+}).outputText;
+const motionHistoryUrl = `data:text/javascript;base64,${Buffer.from(motionHistoryCompiled).toString("base64")}`;
+const directorSource = await fs.readFile(
+  new URL("../src/behavior/behaviorDirector.ts", import.meta.url),
+  "utf8",
+);
+let directorCompiled = ts.transpileModule(directorSource, {
+  compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext },
+}).outputText;
+directorCompiled = directorCompiled.replaceAll('"./behaviorEngine"', `"${engineUrl}"`);
+directorCompiled = directorCompiled.replaceAll('"./motionHistory"', `"${motionHistoryUrl}"`);
+const directorUrl = `data:text/javascript;base64,${Buffer.from(directorCompiled).toString("base64")}`;
+const director = await import(directorUrl);
 const schedulerModule = await loadTsWithImports("../src/behavior/behaviorScheduler.ts", {
-  "./behaviorEngine": engineUrl,
+  "./behaviorDirector": directorUrl,
 });
 
 const relationship = {
@@ -65,7 +84,7 @@ const context = {
   lastInteractionAt: null,
   interactionStreak: 0,
   secondsSinceInteraction: Number.POSITIVE_INFINITY,
-  relationshipStage: "warming",
+  relationshipStage: "familiar",
   timeBand: "day",
   sessionPhase: "settled",
 };
@@ -101,7 +120,7 @@ for (const score of Object.values(disabledScores)) {
   assert.equal(score.final, 0, "硬门禁关闭时 novelty 和 noise 不得重新启用行为");
 }
 
-const sleeping = engine.chooseBehavior({
+const sleeping = director.chooseBehaviorPlan({
   needs: { energy: 0.05, sleepiness: 1, socialNeed: 0.1, boredom: 0.05, curiosity: 0.1 },
   context: { ...context, hour: 23 },
   relationship,
@@ -109,9 +128,10 @@ const sleeping = engine.chooseBehavior({
   random: () => 0.5,
 });
 assert.equal(sleeping?.id, "sleep");
+assert.equal(sleeping?.intent.mood, "sleepy");
 assert.deepEqual(sleeping?.steps.map((step) => step.event.type), ["IDLE_YAWN", "BEGIN_SLEEP"]);
 
-const attention = engine.chooseBehavior({
+const attention = director.chooseBehaviorPlan({
   needs: { energy: 0.8, sleepiness: 0.1, socialNeed: 1, boredom: 0.8, curiosity: 0.5 },
   context,
   relationship,
@@ -121,7 +141,7 @@ const attention = engine.chooseBehavior({
 assert.equal(attention?.id, "seek_attention");
 assert.deepEqual(attention?.steps.map((step) => step.event.type), ["IDLE_LOOK", "EDGE_PEEK"]);
 
-const cooldownBlocked = engine.chooseBehavior({
+const cooldownBlocked = director.chooseBehaviorPlan({
   needs: { energy: 0.05, sleepiness: 1, socialNeed: 0.1, boredom: 0.05, curiosity: 0.1 },
   context: { ...context, hour: 23 },
   relationship,
@@ -130,7 +150,7 @@ const cooldownBlocked = engine.chooseBehavior({
 });
 assert.notEqual(cooldownBlocked?.id, "sleep");
 
-const sleepDisabled = engine.chooseBehavior({
+const sleepDisabled = director.chooseBehaviorPlan({
   needs: { energy: 0.01, sleepiness: 1, socialNeed: 0, boredom: 0, curiosity: 0 },
   context: { ...context, hour: 23, sleepTransitionsEnabled: false },
   relationship,
@@ -203,7 +223,7 @@ assert.equal(interaction2.interactionStreak, 2, "30 秒内互动应延续 streak
 assert.equal(interaction3.interactionStreak, 1, "超过 30 秒应重置 streak");
 assert.equal(behaviorContext.secondsSinceInteraction(interaction3, start + 65_001), 5);
 
-const explore = engine.chooseBehavior({
+const explore = director.chooseBehaviorPlan({
   needs: { energy: 0.9, sleepiness: 0, socialNeed: 0, boredom: 0.1, curiosity: 1 },
   context: { ...context, walkingEnabled: true },
   relationship: { ...relationship, headpatRatio: 0 },
@@ -213,7 +233,7 @@ const explore = engine.chooseBehavior({
 assert.equal(explore?.id, "explore");
 assert.deepEqual(explore?.steps.map((step) => step.event.type), ["IDLE_LOOK", "WALK_START", "WALK_STOP"]);
 
-const reacts = engine.chooseBehavior({
+const reacts = director.chooseBehaviorPlan({
   needs: { energy: 0.7, sleepiness: 0, socialNeed: 0, boredom: 0, curiosity: 0.1 },
   context: { ...context, pointerActivity: 1 },
   relationship: { ...relationship, headpatRatio: 0, totalInteractions: 0 },
@@ -221,6 +241,11 @@ const reacts = engine.chooseBehavior({
   random: () => 0.5,
 });
 assert.equal(reacts?.id, "react_user", "活跃光标应能触发用户动静反应");
+assert.deepEqual(
+  reacts?.steps.map((step) => step.event.type),
+  ["IDLE_STARTLE", "IDLE_LOOK"],
+  "突然的光标活动应形成 startle → look 序列",
+);
 
 const scheduler = new schedulerModule.BehaviorScheduler();
 const firstStep = scheduler.tick({
@@ -229,6 +254,7 @@ const firstStep = scheduler.tick({
   relationship,
   stateKey: "idle",
   idleSubState: "still",
+  random: () => 0.5,
 });
 assert.equal(firstStep?.event.type, "IDLE_LOOK");
 assert.equal(scheduler.consumeStartedBehavior(), "seek_attention");
@@ -236,5 +262,30 @@ assert.equal(scheduler.consumeStartedBehavior(), null, "开始事件只能消费
 assert.equal(scheduler.onAnimationFinished(context.now + 1_000)?.event.type, "EDGE_PEEK");
 scheduler.cancel();
 assert.equal(scheduler.onAnimationFinished(context.now + 2_000), null);
+
+const timeoutScheduler = new schedulerModule.BehaviorScheduler();
+assert.equal(
+  timeoutScheduler.tick({
+    needs: { energy: 0.8, sleepiness: 0.1, socialNeed: 1, boredom: 0.8, curiosity: 0.5 },
+    context,
+    relationship,
+    stateKey: "idle",
+    idleSubState: "still",
+    random: () => 0.5,
+  })?.event.type,
+  "IDLE_LOOK",
+);
+assert.equal(
+  timeoutScheduler.tick({
+    needs: { energy: 0.8, sleepiness: 0.1, socialNeed: 1, boredom: 0.8, curiosity: 0.5 },
+    context: { ...context, now: context.now + 5_001 },
+    relationship,
+    stateKey: "idle",
+    idleSubState: "still",
+    random: () => 0.5,
+  })?.event.type,
+  "EDGE_PEEK",
+  "等待动画超过 5 秒后应推进下一步",
+);
 
 console.log("behavior checks passed");

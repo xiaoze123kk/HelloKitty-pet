@@ -126,8 +126,37 @@ export interface BehaviorStep {
   durationMs?: number;
 }
 
+export type BehaviorMood = "calm" | "curious" | "playful" | "sleepy";
+export type BehaviorTarget = "self" | "user" | "edge";
+
+export interface BehaviorIntent {
+  behavior: BehaviorId;
+  mood: BehaviorMood;
+  intensity: number;
+  target: BehaviorTarget;
+}
+
+export interface ExpressionCandidate {
+  event: BehaviorEvent;
+  weight: number;
+  waitForAnimation?: boolean;
+  durationMs?: number;
+}
+
+export interface ExpressionBeat {
+  candidates: readonly ExpressionCandidate[];
+}
+
+export interface DirectedBehaviorPlan {
+  id: BehaviorId;
+  intent: BehaviorIntent;
+  beats: readonly ExpressionBeat[];
+  cooldownMs: number;
+}
+
 export interface BehaviorPlan {
   id: BehaviorId;
+  intent: BehaviorIntent;
   steps: BehaviorStep[];
   cooldownMs: number;
 }
