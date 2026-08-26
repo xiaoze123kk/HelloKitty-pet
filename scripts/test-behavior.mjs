@@ -23,6 +23,7 @@ async function loadTsWithImports(path, replacements) {
 
 const engine = await loadTs("../src/behavior/behaviorEngine.ts");
 const needs = await loadTs("../src/behavior/needs.ts");
+const behaviorContext = await loadTs("../src/context/behaviorContext.ts");
 const engineSource = await fs.readFile(new URL("../src/behavior/behaviorEngine.ts", import.meta.url), "utf8");
 const engineCompiled = ts.transpileModule(engineSource, {
   compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext },
@@ -112,18 +113,54 @@ const offline = needs.normalizeBehaviorState(
     needs: { energy: 0.1, sleepiness: 0.9, socialNeed: 0.2, boredom: 0.2, curiosity: 0.2 },
     updatedAt: start,
     recentActions: [{ id: "rest", at: start, date: "2026-08-20" }, { id: "bad" }],
+    recentMotions: [{ id: "look", at: start, date: "2026-08-20" }, { id: "bad" }],
   },
   new Date(2026, 7, 20, 20).getTime(),
 );
 assert.ok(offline.needs.energy > 0.1, "离线休息应恢复精力");
 assert.ok(offline.needs.socialNeed > 0.2, "离线久别应温和增加社交期待");
 assert.ok(offline.needs.socialNeed <= 0.85, "离线状态不得制造无上限压力");
-assert.equal(offline.recentActions.length, 1, "迁移应丢弃无效行为记录");
+assert.equal(offline.version, 2, "旧行为状态应迁移到 v2");
+assert.equal(offline.recentBehaviors.length, 1, "迁移应保留旧 recentActions 并丢弃无效记录");
+assert.equal(offline.recentMotions.length, 1, "迁移应丢弃无效动作记录");
 
 for (let index = 0; index < 140; index += 1) {
   needs.recordBehaviorAction(offline, "observe", start + index);
+  needs.recordBehaviorMotion(offline, "look", start + index);
 }
-assert.equal(offline.recentActions.length, 120, "行为日记应保持固定上限");
+assert.equal(offline.recentBehaviors.length, 120, "行为日记应保持固定上限");
+assert.equal(offline.recentMotions.length, 120, "动作日记应保持固定上限");
+
+assert.equal(behaviorContext.timeBandFor(5), "morning");
+assert.equal(behaviorContext.timeBandFor(12), "day");
+assert.equal(behaviorContext.timeBandFor(18), "evening");
+assert.equal(behaviorContext.timeBandFor(23), "lateNight");
+assert.equal(behaviorContext.sessionPhaseFor(3, 0), "justOpened");
+assert.equal(behaviorContext.sessionPhaseFor(9, 1), "returning");
+assert.equal(behaviorContext.sessionPhaseFor(20, 0), "settled");
+assert.equal(behaviorContext.sessionPhaseFor(60, 0), "longSession");
+const interaction0 = behaviorContext.emptyInteractionContext();
+const interaction1 = behaviorContext.recordInteractionContext(
+  interaction0,
+  "headpat",
+  "left_ear",
+  start,
+);
+const interaction2 = behaviorContext.recordInteractionContext(
+  interaction1,
+  "headpat",
+  "right_ear",
+  start + 30_000,
+);
+const interaction3 = behaviorContext.recordInteractionContext(
+  interaction2,
+  "tease",
+  null,
+  start + 60_001,
+);
+assert.equal(interaction2.interactionStreak, 2, "30 秒内互动应延续 streak");
+assert.equal(interaction3.interactionStreak, 1, "超过 30 秒应重置 streak");
+assert.equal(behaviorContext.secondsSinceInteraction(interaction3, start + 65_001), 5);
 
 const explore = engine.chooseBehavior({
   needs: { energy: 0.9, sleepiness: 0, socialNeed: 0, boredom: 0.1, curiosity: 1 },

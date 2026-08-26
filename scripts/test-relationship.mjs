@@ -35,7 +35,7 @@ assert.equal(repaired.recentEvents.length, 0);
 
 const migrated = engine.normalizeRelationship(
   {
-    version: 1,
+    version: 2,
     firstSeenAt: start,
     byPart: { head: 12, body: 2, bow: 1 },
     totalInteractions: 52,
@@ -59,7 +59,8 @@ const progress = {
     version: 1,
     needs: { energy: 0.8, sleepiness: 0.1, socialNeed: 0.2, boredom: 0.2, curiosity: 0.5 },
     updatedAt: start,
-    recentActions: [{ id: "observe", at: start + 2_000, date: "2026-08-20" }],
+    recentBehaviors: [{ id: "observe", at: start + 2_000, date: "2026-08-20" }],
+    recentMotions: [{ id: "look", at: start + 2_000, date: "2026-08-20" }],
   },
 };
 const snapshot = engine.snapshotRelationship(progress, start + 20_000);

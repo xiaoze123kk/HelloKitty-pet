@@ -2,6 +2,7 @@ import type {
   BehaviorId,
   BehaviorStateData,
   ContextSnapshot,
+  AutonomousMotionId,
   PetNeeds,
 } from "./types";
 
@@ -35,10 +36,11 @@ function localDateKey(now: number): string {
 
 export function emptyBehaviorState(now: number): BehaviorStateData {
   return {
-    version: 1,
+    version: 2,
     needs: initialNeeds(),
     updatedAt: now,
-    recentActions: [],
+    recentBehaviors: [],
+    recentMotions: [],
   };
 }
 
@@ -94,10 +96,14 @@ export function normalizeBehaviorState(
     "explore",
     "react_user",
   ];
-  const recentActions = Array.isArray(value.recentActions)
-    ? value.recentActions
-        .filter((entry): entry is BehaviorStateData["recentActions"][number] => {
-          const candidate = entry as Partial<BehaviorStateData["recentActions"][number]>;
+  const legacy = (raw ?? {}) as { recentActions?: unknown };
+  const rawBehaviors = Array.isArray(value.recentBehaviors)
+    ? value.recentBehaviors
+    : legacy.recentActions;
+  const recentBehaviors = Array.isArray(rawBehaviors)
+    ? rawBehaviors
+        .filter((entry): entry is BehaviorStateData["recentBehaviors"][number] => {
+          const candidate = entry as Partial<BehaviorStateData["recentBehaviors"][number]>;
           return (
             typeof candidate?.id === "string" &&
             validIds.includes(candidate.id as BehaviorId) &&
@@ -108,11 +114,30 @@ export function normalizeBehaviorState(
         })
         .slice(-MAX_HISTORY)
     : [];
+  const validMotions: AutonomousMotionId[] = [
+    "stretch", "yawn", "wash", "look", "sneeze", "shake", "spin", "jump",
+    "nod", "sway", "bow", "startle", "dizzy", "peek", "edgePeek", "walk", "sleep",
+  ];
+  const recentMotions = Array.isArray(value.recentMotions)
+    ? value.recentMotions
+        .filter((entry): entry is BehaviorStateData["recentMotions"][number] => {
+          const candidate = entry as Partial<BehaviorStateData["recentMotions"][number]>;
+          return (
+            typeof candidate?.id === "string" &&
+            validMotions.includes(candidate.id as AutonomousMotionId) &&
+            typeof candidate.at === "number" &&
+            Number.isFinite(candidate.at) &&
+            typeof candidate.date === "string"
+          );
+        })
+        .slice(-MAX_HISTORY)
+    : [];
   return {
-    version: 1,
+    version: 2,
     needs: advanceOfflineNeeds(needs, now - updatedAt, now),
     updatedAt: now,
-    recentActions,
+    recentBehaviors,
+    recentMotions,
   };
 }
 
@@ -122,8 +147,20 @@ export function recordBehaviorAction(
   now = Date.now(),
 ): void {
   state.updatedAt = now;
-  state.recentActions = [
-    ...state.recentActions,
+  state.recentBehaviors = [
+    ...state.recentBehaviors,
+    { id, at: now, date: localDateKey(now) },
+  ].slice(-MAX_HISTORY);
+}
+
+export function recordBehaviorMotion(
+  state: BehaviorStateData,
+  id: AutonomousMotionId,
+  now = Date.now(),
+): void {
+  state.updatedAt = now;
+  state.recentMotions = [
+    ...state.recentMotions,
     { id, at: now, date: localDateKey(now) },
   ].slice(-MAX_HISTORY);
 }

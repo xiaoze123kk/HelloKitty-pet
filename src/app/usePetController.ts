@@ -17,8 +17,17 @@ import {
   applyRest,
   initialNeeds,
   recordBehaviorAction,
+  recordBehaviorMotion,
 } from "../behavior/needs";
+import { autonomousMotionForEvent } from "../behavior/motionHistory";
 import type { BehaviorId, BehaviorStep, ContextSnapshot } from "../behavior/types";
+import {
+  emptyInteractionContext,
+  recordInteractionContext,
+  secondsSinceInteraction,
+  sessionPhaseFor,
+  timeBandFor,
+} from "../context/behaviorContext";
 import {
   initialPointerActivity,
   pointerContext,
@@ -112,6 +121,7 @@ import {
   chooseHeadpatReaction,
   chooseStartupRitual,
   markRitualShown,
+  relationshipStage,
   type CompanionRitual,
   type HeadpatReaction,
 } from "../relationship/reactionEngine";
@@ -518,6 +528,7 @@ export function usePetController(): PetController {
   const behaviorNeedsRef = useRef(initialNeeds());
   const behaviorNeedsAtRef = useRef(Date.now());
   const behaviorSchedulerRef = useRef(new BehaviorScheduler());
+  const interactionContextRef = useRef(emptyInteractionContext());
   /** 偏好加载完成前不允许自动恢复散步，避免误读默认值 */
   const walkingReadyRef = useRef(false);
   const progressSaveTimerRef = useRef<number | undefined>(undefined);
@@ -531,14 +542,15 @@ export function usePetController(): PetController {
     const progress = progressRef.current;
     const pointer = pointerContext(pointerActivityRef.current, now);
     const date = new Date(now);
+    const sessionMinutes = progress ? (now - progress.sessionStart) / 60_000 : 0;
+    const relationship = progress ? relationshipContext(progress, now) : null;
+    const interaction = interactionContextRef.current;
     return {
       now,
       hour: date.getHours(),
-      sessionMinutes: progress ? (now - progress.sessionStart) / 60_000 : 0,
+      sessionMinutes,
       ...pointer,
-      todayInteractions: progress
-        ? relationshipContext(progress, now).todayInteractions
-        : 0,
+      todayInteractions: relationship?.todayInteractions ?? 0,
       currentState: stateValueRef.current,
       idleSubState: idleSubStateRef.current,
       dnd: dndRef.current,
@@ -547,6 +559,16 @@ export function usePetController(): PetController {
       idleActionsEnabled: animationRef.current.idleActions,
       sleepTransitionsEnabled: animationRef.current.sleepTransitions,
       walkingEnabled: animationRef.current.walking,
+      recentBehaviors: progress?.behavior.recentBehaviors ?? [],
+      recentMotions: progress?.behavior.recentMotions ?? [],
+      lastInteraction: interaction.lastInteraction,
+      lastTouchTarget: interaction.lastTouchTarget,
+      lastInteractionAt: interaction.lastInteractionAt,
+      interactionStreak: interaction.interactionStreak,
+      secondsSinceInteraction: secondsSinceInteraction(interaction, now),
+      relationshipStage: relationship ? relationshipStage(relationship) : "new",
+      timeBand: timeBandFor(date.getHours()),
+      sessionPhase: sessionPhaseFor(sessionMinutes, sessionAbsenceDaysRef.current),
     };
   }, [actor]);
   const behaviorContextRef = useRef(behaviorContext);
@@ -555,6 +577,11 @@ export function usePetController(): PetController {
   const dispatchBehaviorStep = useCallback(
     (step: BehaviorStep | null): void => {
       if (!step) return;
+      const recordMotion = (eventType: BehaviorStep["event"]["type"]): void => {
+        const progress = progressRef.current;
+        const motion = autonomousMotionForEvent(eventType);
+        if (progress && motion) recordBehaviorMotion(progress.behavior, motion);
+      };
       if (import.meta.env.DEV) {
         console.debug("[behavior]", step.event.type);
       }
@@ -564,20 +591,24 @@ export function usePetController(): PetController {
           .then((session) => {
             if (!session) {
               programmaticWindowMoveRef.current = false;
+              recordMotion("IDLE_PEEK");
               actor.send({ type: "IDLE_PEEK" });
               return;
             }
             edgePeekSessionRef.current = session;
             setEdgePeekSide(session.edge);
+            recordMotion(step.event.type);
             actor.send(step.event);
           })
           .catch((error) => {
             programmaticWindowMoveRef.current = false;
             console.error("begin edge peek failed:", error);
+            recordMotion("IDLE_PEEK");
             actor.send({ type: "IDLE_PEEK" });
           });
         return;
       }
+      recordMotion(step.event.type);
       actor.send(step.event);
     },
     [actor],
@@ -654,14 +685,21 @@ export function usePetController(): PetController {
   recordAutonomousBehaviorRef.current = recordAutonomousBehavior;
 
   const recordRelationshipEvent = useCallback(
-    (type: RelationshipEventType): void => {
+    (type: RelationshipEventType, touchTarget: PetTouchTargetId | null = null): void => {
       const progress = progressRef.current;
       if (!progress) return;
-      recordEvent(progress.relationship, type);
+      const now = Date.now();
+      recordEvent(progress.relationship, type, now);
       if (type !== "session_start") {
+        interactionContextRef.current = recordInteractionContext(
+          interactionContextRef.current,
+          type,
+          touchTarget,
+          now,
+        );
         behaviorNeedsRef.current = applyInteraction(behaviorNeedsRef.current);
         progress.behavior.needs = behaviorNeedsRef.current;
-        progress.behavior.updatedAt = Date.now();
+        progress.behavior.updatedAt = now;
       }
       const unlocked = unlockEligibleMemories(progress.relationship);
       for (const memoryId of unlocked) {
@@ -1827,6 +1865,7 @@ export function usePetController(): PetController {
             : target.id === "lower_face"
               ? "body_touch"
               : "headpat",
+        target.id,
       );
       actor.send({
         type: "CLICK",
@@ -2015,6 +2054,7 @@ export function usePetController(): PetController {
       behaviorNeedsRef.current = fresh.behavior.needs;
       behaviorNeedsAtRef.current = now;
       behaviorSchedulerRef.current.reset();
+      interactionContextRef.current = emptyInteractionContext();
       setBehaviorThought(null);
       const entries = engineRef.current?.entries ?? [];
       engineRef.current = new DialogueEngine(entries, fresh.dialogue);

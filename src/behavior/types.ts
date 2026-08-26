@@ -1,5 +1,8 @@
 import type { PetEvent } from "../pet/petMachine";
+import type { PetTouchTargetId } from "../pet/touchZones";
 import type { RelationshipContext } from "../relationship/relationshipEngine";
+import type { RelationshipEventType } from "../relationship/relationshipEngine";
+import type { RelationshipStage } from "../relationship/reactionEngine";
 
 export type BehaviorId =
   | "sleep"
@@ -26,16 +29,45 @@ export interface BehaviorHistoryEntry {
   date: string;
 }
 
+export type AutonomousMotionId =
+  | "stretch"
+  | "yawn"
+  | "wash"
+  | "look"
+  | "sneeze"
+  | "shake"
+  | "spin"
+  | "jump"
+  | "nod"
+  | "sway"
+  | "bow"
+  | "startle"
+  | "dizzy"
+  | "peek"
+  | "edgePeek"
+  | "walk"
+  | "sleep";
+
+export interface MotionHistoryEntry {
+  id: AutonomousMotionId;
+  at: number;
+  date: string;
+}
+
 /**
  * 可持久化的生命状态。内部需求不会作为惩罚型数值展示给用户，
  * 只用于让 Kitty 在跨会话后仍保持连续的作息和性格。
  */
 export interface BehaviorStateData {
-  version: 1;
+  version: 2;
   needs: PetNeeds;
   updatedAt: number;
-  recentActions: BehaviorHistoryEntry[];
+  recentBehaviors: BehaviorHistoryEntry[];
+  recentMotions: MotionHistoryEntry[];
 }
+
+export type TimeBand = "morning" | "day" | "evening" | "lateNight";
+export type SessionPhase = "justOpened" | "settled" | "longSession" | "returning";
 
 export interface ContextSnapshot {
   now: number;
@@ -52,6 +84,16 @@ export interface ContextSnapshot {
   idleActionsEnabled: boolean;
   sleepTransitionsEnabled: boolean;
   walkingEnabled: boolean;
+  recentBehaviors: readonly BehaviorHistoryEntry[];
+  recentMotions: readonly MotionHistoryEntry[];
+  lastInteraction: RelationshipEventType | null;
+  lastTouchTarget: PetTouchTargetId | null;
+  lastInteractionAt: number | null;
+  interactionStreak: number;
+  secondsSinceInteraction: number;
+  relationshipStage: RelationshipStage;
+  timeBand: TimeBand;
+  sessionPhase: SessionPhase;
 }
 
 export type BehaviorEventType =

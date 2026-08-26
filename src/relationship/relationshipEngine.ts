@@ -443,7 +443,7 @@ function buildWeeklySummary(progress: ProgressData, now: number): WeeklySummary 
   const recentEvents = progress.relationship.recentEvents.filter((event) => event.at >= start.getTime());
   const interactions = recentEvents.filter((event) => event.type !== "session_start");
   const sessions = recentEvents.filter((event) => event.type === "session_start").length;
-  const actions = progress.behavior.recentActions.filter((entry) => entry.at >= start.getTime());
+  const actions = progress.behavior.recentBehaviors.filter((entry) => entry.at >= start.getTime());
   const lines: string[] = [];
   if (sessions > 0) lines.push(`这七天见面 ${sessions} 次，留下 ${interactions.length} 次互动。`);
   else lines.push("这七天才刚刚开始写新的故事。");
@@ -484,7 +484,7 @@ export function snapshotRelationship(progress: ProgressData, now = Date.now()): 
     (event) => event.type === "accessory_touch",
   ).length;
   const sessions = todayEvents.filter((event) => event.type === "session_start").length;
-  const todayActions = progress.behavior.recentActions.filter((entry) => entry.date === today);
+  const todayActions = progress.behavior.recentBehaviors.filter((entry) => entry.date === today);
   const diary: string[] = ["今天见到了你。"];
   if (headpats > 0) diary.push(`你今天摸了我 ${headpats} 次头。`);
   if (teases > 0) diary.push(`你还拿鼠标逗了我${teases === 1 ? "一次" : `${teases} 次`}。`);
