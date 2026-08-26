@@ -15,7 +15,7 @@
         "label": "main",
         "title": "KittyPet",
         "width": 300,
-        "height": 320,
+        "height": 360,
         "resizable": false,
         "decorations": false,
         "transparent": true,

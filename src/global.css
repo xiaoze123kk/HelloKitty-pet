@@ -28,7 +28,7 @@ body {
      缩放由 PetApp 的 transform: scale() 完成，根容器必须固定为设计尺寸，
      否则窗口变大后 100% 布局会与 transform 叠加导致二次放大。 */
   width: 300px;
-  height: 320px;
+  height: 360px;
 }
 
 .pet-fatal {

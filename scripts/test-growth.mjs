@@ -17,6 +17,32 @@ async function loadTs(path) {
 
 const wardrobe = await loadTs("../src/growth/wardrobe.ts");
 const memory = await loadTs("../src/memory/userMemory.ts");
+const globalCss = await fs.readFile(new URL("../src/global.css", import.meta.url), "utf8");
+const platformWindowSource = await fs.readFile(
+  new URL("../src/platform/window.ts", import.meta.url),
+  "utf8",
+);
+const tauriConfig = JSON.parse(
+  await fs.readFile(new URL("../src-tauri/tauri.conf.json", import.meta.url), "utf8"),
+);
+const rootHeight = Number(
+  globalCss.match(/\.pet-root\s*\{[^}]*height:\s*(\d+)px/s)?.[1],
+);
+const dragAreaTop = Number(
+  globalCss.match(/\.pet-drag-area\s*\{[^}]*top:\s*(\d+)px/s)?.[1],
+);
+const runtimeWindowHeight = Number(
+  platformWindowSource.match(/WINDOW_CSS_HEIGHT\s*=\s*(\d+)/)?.[1],
+);
+const configuredWindowHeight = Number(tauriConfig.app.windows[0].height);
+
+assert.ok(Number.isFinite(rootHeight) && Number.isFinite(dragAreaTop));
+assert.equal(rootHeight, runtimeWindowHeight, "CSS and runtime window heights must match");
+assert.equal(
+  rootHeight,
+  configuredWindowHeight,
+  "CSS and Tauri window heights must match",
+);
 
 assert.equal(wardrobe.WARDROBE_CATALOG.length, 6);
 assert.equal(
@@ -47,6 +73,10 @@ for (const item of wardrobe.WARDROBE_CATALOG) {
     assert.ok(
       item.placement.y >= 188,
       `${item.id} must attach directly below the chin`,
+    );
+    assert.ok(
+      dragAreaTop + item.placement.y + item.placement.height + 10 <= rootHeight,
+      `${item.id} must retain at least 10px of motion clearance below the window edge`,
     );
   } else {
     assert.ok(

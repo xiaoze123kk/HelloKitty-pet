@@ -69,7 +69,7 @@ assert.equal(night?.kind, "late_night");
 
 assert.deepEqual(
   edgePeek.computeEdgePeekPlacement(
-    { x: 1620, y: 700, width: 300, height: 320 },
+    { x: 1620, y: 700, width: 300, height: 360 },
     { x: 0, y: 0, width: 1920, height: 1080 },
     100,
     142,
@@ -78,7 +78,7 @@ assert.deepEqual(
 );
 assert.equal(
   edgePeek.computeEdgePeekPlacement(
-    { x: 800, y: 300, width: 300, height: 320 },
+    { x: 800, y: 300, width: 300, height: 360 },
     { x: 0, y: 0, width: 1920, height: 1080 },
     100,
     142,

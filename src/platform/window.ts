@@ -57,9 +57,9 @@ function findMonitorAt(
   });
 }
 
-/** 布局按 300x320 CSS 像素设计 */
+/** 布局按 300x360 CSS 像素设计，底部为下巴饰品预留飘动安全区。 */
 export const WINDOW_CSS_WIDTH = 300;
-export const WINDOW_CSS_HEIGHT = 320;
+export const WINDOW_CSS_HEIGHT = 360;
 
 export const appWindow = getCurrentWindow();
 
@@ -137,7 +137,7 @@ export async function finishEdgePeek(session: EdgePeekSession): Promise<void> {
 }
 
 /**
- * 让 WebView 视口恒为 300x320 CSS 像素 × 桌宠缩放比例。
+ * 让 WebView 视口恒为 300x360 CSS 像素 × 桌宠缩放比例。
  *
  * 必须用 window.devicePixelRatio 而不是 Tauri 的 scaleFactor()：
  * Windows 辅助功能"文本大小"(TextScaleFactor) 也会改变 WebView2 的
