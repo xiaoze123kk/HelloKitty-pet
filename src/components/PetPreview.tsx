@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { normalizeAccessoryId } from "../growth/wardrobe";
 import { EffectLayer } from "../effects/EffectLayer";
 import type { PeekEdge } from "../platform/edgePeek";
@@ -32,9 +33,22 @@ const TOUCH_TARGETS = new Set<PetTouchTargetId>([
 /** 仅开发环境使用的无 Tauri 依赖视觉校准页。 */
 export function PetPreview() {
   const params = new URLSearchParams(window.location.search);
+  const sequence = (params.get("sequence") ?? "")
+    .split(",")
+    .filter((candidate): candidate is PetVisualMotion => candidate in petMotions);
+  const sequenceKey = sequence.join(",");
+  const [sequenceIndex, setSequenceIndex] = useState(0);
+  const requestedInterval = Number(params.get("interval"));
+  const sequenceInterval = Number.isFinite(requestedInterval)
+    ? Math.min(2_000, Math.max(80, requestedInterval))
+    : 260;
   const requestedMotion = params.get("motion") as PetVisualMotion | null;
   const motion =
-    requestedMotion && requestedMotion in petMotions ? requestedMotion : "idle";
+    sequence.length > 0
+      ? sequence[sequenceIndex % sequence.length]
+      : requestedMotion && requestedMotion in petMotions
+        ? requestedMotion
+        : "idle";
   const requestedReaction = params.get("reaction") as HeadpatReaction | null;
   const headpatReaction =
     requestedReaction && HEADPAT_REACTIONS.has(requestedReaction)
@@ -55,8 +69,19 @@ export function PetPreview() {
         }
       : null;
 
+  useEffect(() => {
+    setSequenceIndex(0);
+    if (sequence.length <= 1) return;
+    const timer = window.setInterval(() => {
+      setSequenceIndex((current) => (current + 1) % sequence.length);
+    }, sequenceInterval);
+    return () => window.clearInterval(timer);
+    // sequenceKey is a stable representation of the preview-only motion list.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sequenceInterval, sequenceKey]);
+
   return (
-    <div className="pet-root pet-preview-root">
+    <div className="pet-root pet-preview-root" data-preview-motion={motion}>
       <EffectLayer
         motion={motion}
         effectEvent={{ revision: 1, anchor: null, target: touchTarget }}

@@ -17,6 +17,13 @@ import {
   type MotionKeyframe,
   type ProceduralMotionSpec,
 } from "./proceduralMotion";
+import {
+  beginMotionRun,
+  completeMotionRun,
+  MOTION_TRANSITION_BLEND_MODE,
+  motionTransitionFrame,
+  type MotionCompletionGate,
+} from "./motionTransition";
 import { SpriteAnimation } from "./SpriteAnimation";
 
 interface ProceduralAnimationProps {
@@ -48,6 +55,7 @@ function usePrefersReducedMotion(): boolean {
 }
 
 const imageCache = new Map<string, Promise<HTMLImageElement>>();
+let coreExpressionPreload: Promise<void> | null = null;
 
 function loadImage(src: string): Promise<HTMLImageElement> {
   if (!imageCache.has(src)) {
@@ -62,6 +70,17 @@ function loadImage(src: string): Promise<HTMLImageElement> {
     );
   }
   return imageCache.get(src)!;
+}
+
+function preloadCoreExpressionAssets(): Promise<void> {
+  if (!coreExpressionPreload) {
+    coreExpressionPreload = Promise.all(
+      Object.values(EXPRESSION_URLS).map((src) =>
+        loadImage(src).catch(() => null),
+      ),
+    ).then(() => undefined);
+  }
+  return coreExpressionPreload;
 }
 
 const existsCache = new Map<string, Promise<HTMLImageElement | null>>();
@@ -136,6 +155,17 @@ export function ProceduralAnimation({
   const baseImageRef = useRef<HTMLImageElement | null>(null);
   const halfImageRef = useRef<HTMLImageElement | null>(null);
   const blinkImageRef = useRef<HTMLImageElement | null>(null);
+  const lastPoseRef = useRef<MotionKeyframe | null>(null);
+  const lastDrawnImageRef = useRef<HTMLImageElement | null>(null);
+  const pendingTransitionRef = useRef<{
+    fromImage: HTMLImageElement;
+    fromPose: MotionKeyframe;
+    toSpecKey: string;
+  } | null>(null);
+  const completionGateRef = useRef<MotionCompletionGate>({
+    runId: 0,
+    finished: true,
+  });
   /**
    * 已加载完成的动作名（不是布尔值）：
    * 动作切换时先置 null，再置为新 specKey。即使 React 把两次 setState
@@ -143,10 +173,13 @@ export function ProceduralAnimation({
    * “ZZZ 已显示但 canvas 仍停留在上一个动作画面”的陈旧帧问题。
    */
   const [loadedSpecKey, setLoadedSpecKey] = useState<string | null>(null);
+  const [fallbackSpecKey, setFallbackSpecKey] = useState<string | null>(null);
+  const [hasCanvasFrame, setHasCanvasFrame] = useState(false);
   const [blinkReady, setBlinkReady] = useState(false);
   const [specRevision, setSpecRevision] = useState(0);
 
-  const ready = loadedSpecKey === getSpecKey(motion);
+  const usingFallback = fallbackSpecKey === getSpecKey(motion);
+  const canvasVisible = hasCanvasFrame && !usingFallback;
   const reducedMotion = usePrefersReducedMotion();
 
   const motionRef = useRef(motion);
@@ -154,14 +187,20 @@ export function ProceduralAnimation({
   const blinkFrameRef = useRef<BlinkFrame>("open");
   const onFinishedRef = useRef(onFinished);
   const onPoseRef = useRef(onPose);
+  const reducedMotionRef = useRef(reducedMotion);
   motionRef.current = motion;
   zoomRef.current = zoom;
   onFinishedRef.current = onFinished;
   onPoseRef.current = onPose;
+  reducedMotionRef.current = reducedMotion;
+
+  useEffect(() => {
+    void preloadCoreExpressionAssets();
+  }, []);
 
   // 视线跟随：用 CSS transform 微调画布，不触发重绘
   useEffect(() => {
-    if (!gazeFollow || !ready || reducedMotion) return;
+    if (!gazeFollow || !canvasVisible || reducedMotion) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
 
@@ -189,28 +228,22 @@ export function ProceduralAnimation({
       window.removeEventListener("pointerout", onOut);
       reset();
     };
-  }, [gazeFollow, ready, reducedMotion]);
+  }, [canvasVisible, gazeFollow, reducedMotion]);
 
-  const drawPose = (keyframe: MotionKeyframe) => {
-    onPoseRef.current?.(keyframe);
+  const drawImageAtPose = (
+    ctx: CanvasRenderingContext2D,
+    image: HTMLImageElement,
+    keyframe: MotionKeyframe,
+    alpha: number,
+    compositeOperation: GlobalCompositeOperation = "source-over",
+  ) => {
     const canvas = canvasRef.current;
-    const base = baseImageRef.current;
-    if (!canvas || !base) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
+    if (!canvas) return;
     const size = canvas.width;
     const scaleToCanvas = size / CANVAS_BASE_SIZE;
-    const image =
-      blinkFrameRef.current === "closed"
-        ? (blinkImageRef.current ?? base)
-        : blinkFrameRef.current === "half"
-          ? (halfImageRef.current ?? blinkImageRef.current ?? base)
-          : base;
-    if (!image) return;
-
-    ctx.clearRect(0, 0, size, size);
     ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.globalCompositeOperation = compositeOperation;
     ctx.translate(size / 2, size / 2 + (keyframe.dy ?? 0) * scaleToCanvas);
     ctx.rotate(((keyframe.angle ?? 0) * Math.PI) / 180);
     const sx = keyframe.scale ?? 1;
@@ -220,31 +253,93 @@ export function ProceduralAnimation({
     }
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = "high";
-
     const half = (CANVAS_BASE_SIZE / 2) * scaleToCanvas;
     ctx.drawImage(image, -half, -half, half * 2, half * 2);
     ctx.restore();
+  };
+
+  const drawPose = (keyframe: MotionKeyframe) => {
+    onPoseRef.current?.(keyframe);
+    const canvas = canvasRef.current;
+    const base = baseImageRef.current;
+    if (!canvas || !base) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const image =
+      blinkFrameRef.current === "closed"
+        ? (blinkImageRef.current ?? base)
+        : blinkFrameRef.current === "half"
+          ? (halfImageRef.current ?? blinkImageRef.current ?? base)
+          : base;
+    if (!image) return;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    drawImageAtPose(ctx, image, keyframe, 1);
+    lastPoseRef.current = keyframe;
+    lastDrawnImageRef.current = image;
+  };
+
+  const drawTransitionPose = (
+    fromImage: HTMLImageElement,
+    fromPose: MotionKeyframe,
+    toImage: HTMLImageElement,
+    toPose: MotionKeyframe,
+    previousAlpha: number,
+    nextAlpha: number,
+  ) => {
+    onPoseRef.current?.(toPose);
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    drawImageAtPose(ctx, fromImage, fromPose, previousAlpha);
+    drawImageAtPose(
+      ctx,
+      toImage,
+      toPose,
+      nextAlpha,
+      MOTION_TRANSITION_BLEND_MODE,
+    );
+    lastPoseRef.current = toPose;
+    lastDrawnImageRef.current = toImage;
   };
 
   // ---------- 按动作加载基帧；失败时退回 sprite sheet ----------
   useEffect(() => {
     let disposed = false;
     setLoadedSpecKey(null);
+    setFallbackSpecKey(null);
     setBlinkReady(false);
-    baseImageRef.current = null;
-    halfImageRef.current = null;
-    blinkImageRef.current = null;
     blinkFrameRef.current = "open";
 
     const specKey = getSpecKey(motion);
     const spec = getMotionSpec(motion);
+    const fromImage = lastDrawnImageRef.current ?? baseImageRef.current;
+    const fromPose = lastPoseRef.current;
     resolveMotionAssets(specKey, spec).then(({ base, half, blink }) => {
       if (disposed) return;
+      if (!base) {
+        pendingTransitionRef.current = null;
+        baseImageRef.current = null;
+        halfImageRef.current = null;
+        blinkImageRef.current = null;
+        lastDrawnImageRef.current = null;
+        lastPoseRef.current = null;
+        setHasCanvasFrame(false);
+        setFallbackSpecKey(specKey);
+        return;
+      }
+      pendingTransitionRef.current =
+        fromImage && fromPose && !reducedMotionRef.current
+          ? { fromImage, fromPose, toSpecKey: specKey }
+          : null;
       baseImageRef.current = base;
       halfImageRef.current = half;
       blinkImageRef.current = blink;
       setBlinkReady(blink !== null);
-      if (!base) return;
+      setHasCanvasFrame(true);
       setLoadedSpecKey(specKey);
     });
 
@@ -269,31 +364,70 @@ export function ProceduralAnimation({
     const spec = getMotionSpec(motion);
     if (!Array.isArray(spec.keyframes) || spec.keyframes.length === 0) return;
     let raf = 0;
-    let finishedFired = false;
-    const start = performance.now();
+    let finishTimer: number | null = null;
+    const runGate = beginMotionRun(completionGateRef.current);
+    completionGateRef.current = runGate;
+    const runId = runGate.runId;
     const fps = Number.isFinite(spec.fps) && spec.fps > 0 ? spec.fps : 6;
     const frameMs = Math.max(16, 1000 / fps);
     const totalMs = spec.keyframes.length * frameMs;
     const lastIndex = Math.max(spec.keyframes.length - 1, 0);
+    const pendingTransition =
+      pendingTransitionRef.current?.toSpecKey === loadedSpecKey
+        ? pendingTransitionRef.current
+        : null;
+    pendingTransitionRef.current = null;
+
+    const finishRun = () => {
+      const result = completeMotionRun(completionGateRef.current, runId);
+      completionGateRef.current = result.gate;
+      if (result.shouldNotify) {
+        finishTimer = window.setTimeout(() => onFinishedRef.current?.(), 0);
+      }
+    };
 
     if (reducedMotion) {
       drawPose(spec.keyframes[0]);
       if (!spec.loop) {
-        const timer = window.setTimeout(() => onFinishedRef.current?.(), 0);
-        return () => window.clearTimeout(timer);
+        finishRun();
       }
-      return;
+      return () => {
+        if (finishTimer !== null) window.clearTimeout(finishTimer);
+      };
     }
 
+    let timelineStart: number | null = pendingTransition
+      ? null
+      : performance.now();
+    const transitionStart = performance.now();
     const tick = (now: number) => {
-      const elapsed = now - start;
+      if (pendingTransition && timelineStart === null) {
+        const transition = motionTransitionFrame(
+          pendingTransition.fromPose,
+          spec.keyframes[0],
+          now - transitionStart,
+        );
+        drawTransitionPose(
+          pendingTransition.fromImage,
+          pendingTransition.fromPose,
+          baseImageRef.current!,
+          transition.pose,
+          transition.previousAlpha,
+          transition.nextAlpha,
+        );
+        if (!transition.done) {
+          raf = requestAnimationFrame(tick);
+          return;
+        }
+        drawPose(spec.keyframes[0]);
+        timelineStart = now;
+      }
+
+      const elapsed = now - (timelineStart ?? now);
 
       if (!spec.loop && elapsed >= totalMs) {
         drawPose(spec.keyframes[lastIndex]);
-        if (!finishedFired) {
-          finishedFired = true;
-          window.setTimeout(() => onFinishedRef.current?.(), 0);
-        }
+        finishRun();
         return;
       }
 
@@ -332,12 +466,23 @@ export function ProceduralAnimation({
       raf = requestAnimationFrame(tick);
     };
 
-    // 首帧立即绘制
-    drawPose(spec.keyframes[0]);
+    if (pendingTransition) {
+      drawTransitionPose(
+        pendingTransition.fromImage,
+        pendingTransition.fromPose,
+        baseImageRef.current!,
+        pendingTransition.fromPose,
+        1,
+        0,
+      );
+    } else {
+      drawPose(spec.keyframes[0]);
+    }
     raf = requestAnimationFrame(tick);
 
     return () => {
       cancelAnimationFrame(raf);
+      if (finishTimer !== null) window.clearTimeout(finishTimer);
       blinkFrameRef.current = "open";
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -395,7 +540,7 @@ export function ProceduralAnimation({
 
   // ---------- 缩放 / DPI 变化时重建背板 ----------
   useEffect(() => {
-    if (loadedSpecKey !== getSpecKey(motion)) return;
+    if (!canvasVisible || loadedSpecKey !== getSpecKey(motion)) return;
 
     const resizeAndDraw = () => {
       const canvas = canvasRef.current;
@@ -405,12 +550,15 @@ export function ProceduralAnimation({
         1,
         Math.min(2048, Math.round(CANVAS_BASE_SIZE * zoomRef.current * dpr)),
       );
-      if (canvas.width !== target || canvas.height !== target) {
+      const resized = canvas.width !== target || canvas.height !== target;
+      if (resized) {
         canvas.width = target;
         canvas.height = target;
       }
-      const spec = getMotionSpec(motionRef.current);
-      drawPose(spec.keyframes[0]);
+      if (resized) {
+        const spec = getMotionSpec(motionRef.current);
+        drawPose(lastPoseRef.current ?? spec.keyframes[0]);
+      }
     };
 
     resizeAndDraw();
@@ -419,14 +567,14 @@ export function ProceduralAnimation({
       window.removeEventListener("resize", resizeAndDraw);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [zoom, loadedSpecKey]);
+  }, [canvasVisible, loadedSpecKey, zoom]);
 
-  if (!ready) {
+  if (usingFallback || !hasCanvasFrame) {
     return (
       <SpriteAnimation
         config={petMotions[motion]}
         reducedMotion={reducedMotion}
-        onFinished={onFinished}
+        onFinished={usingFallback ? onFinished : undefined}
       />
     );
   }
