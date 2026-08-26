@@ -22,6 +22,8 @@ export interface AccessoryPlacement {
 
 export type AccessoryHitArea = AccessoryPlacement;
 
+export type AccessoryAnchor = "temple" | "crown" | "chin";
+
 export interface AccessoryDefinition {
   id: AccessoryId;
   name: string;
@@ -30,7 +32,7 @@ export interface AccessoryDefinition {
   unlockHint: string;
   cell: AtlasCell;
   /** 大头版本的视觉锚点，避免沿用全身角色的胸口或肩颈坐标。 */
-  anchor: "temple" | "crown" | "chin";
+  anchor: AccessoryAnchor;
   placement: AccessoryPlacement;
   /** 透明图集单元内真正可点击的可见区域。 */
   hitArea: AccessoryHitArea;

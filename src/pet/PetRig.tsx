@@ -29,6 +29,7 @@ import {
   scheduleMicroCue,
   type MicroCue,
 } from "./microMotion";
+import { attachmentPoseFor } from "./attachmentPose";
 
 interface PetRigProps {
   motion: PetVisualMotion;
@@ -45,25 +46,47 @@ interface PetRigProps {
   gazeFollow?: boolean;
 }
 
-function AccessoryLayer({ item }: { item: AccessoryDefinition }) {
+function attachmentStyle(
+  motion: PetVisualMotion,
+  item: Pick<AccessoryDefinition, "anchor">,
+): CSSProperties {
+  const pose = attachmentPoseFor(motion, item.anchor);
+  return {
+    "--attachment-dx": `${pose.dx}px`,
+    "--attachment-dy": `${pose.dy}px`,
+    "--attachment-scale-x": String(pose.scaleX),
+    "--attachment-scale-y": String(pose.scaleY),
+    "--attachment-angle": `${pose.angle}deg`,
+  } as CSSProperties;
+}
+
+function AccessoryLayer({
+  item,
+  motion,
+}: {
+  item: AccessoryDefinition;
+  motion: PetVisualMotion;
+}) {
   return (
     <span
       className="pet-accessory-pose pet-layer-accessory-pose"
       data-layer={item.layer}
       data-anchor={item.anchor}
     >
-      <span
-        className="pet-accessory-overlay"
-        style={{
-          left: item.placement.x,
-          top: item.placement.y,
-          width: item.placement.width,
-          height: item.placement.height,
-          backgroundImage: `url("${WARDROBE_ATLAS_URL}")`,
-          backgroundSize: "200% 300%",
-          backgroundPosition: `${item.cell.column * 100}% ${item.cell.row * 50}%`,
-        }}
-      />
+      <span className="pet-attachment-base" style={attachmentStyle(motion, item)}>
+        <span
+          className="pet-accessory-overlay"
+          style={{
+            left: item.placement.x,
+            top: item.placement.y,
+            width: item.placement.width,
+            height: item.placement.height,
+            backgroundImage: `url("${WARDROBE_ATLAS_URL}")`,
+            backgroundSize: "200% 300%",
+            backgroundPosition: `${item.cell.column * 100}% ${item.cell.row * 50}%`,
+          }}
+        />
+      </span>
     </span>
   );
 }
@@ -325,7 +348,9 @@ export function PetRig({
           <div className="pet-rig-vital">
             <div className="pet-rig-micro-response">
               <div className="pet-rig-emotion">
-                {accessory?.layer === "behind" && <AccessoryLayer item={accessory} />}
+                {accessory?.layer === "behind" && (
+                  <AccessoryLayer item={accessory} motion={motion} />
+                )}
 
                 <ProceduralAnimation
                   motion={motion}
@@ -357,7 +382,7 @@ export function PetRig({
                 </div>
 
                 {accessory && accessory.layer !== "behind" && (
-                  <AccessoryLayer item={accessory} />
+                  <AccessoryLayer item={accessory} motion={motion} />
                 )}
                 {motion === "noseBoop" && (
                   <span className="pet-touch-nose-ring" aria-hidden="true" />

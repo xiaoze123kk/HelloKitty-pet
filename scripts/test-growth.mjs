@@ -17,6 +17,7 @@ async function loadTs(path) {
 
 const wardrobe = await loadTs("../src/growth/wardrobe.ts");
 const memory = await loadTs("../src/memory/userMemory.ts");
+const attachment = await loadTs("../src/pet/attachmentPose.ts");
 const globalCss = await fs.readFile(new URL("../src/global.css", import.meta.url), "utf8");
 const platformWindowSource = await fs.readFile(
   new URL("../src/platform/window.ts", import.meta.url),
@@ -94,6 +95,20 @@ assert.equal(
   wardrobe.wardrobeSnapshot(["interactions_100"], "golden_bell").selectedId,
   "golden_bell",
 );
+
+const neutralAttachment = attachment.attachmentPoseFor("idle", "chin");
+assert.deepEqual(neutralAttachment, attachment.NEUTRAL_ATTACHMENT_POSE);
+for (const motion of ["sleep", "fallAsleep", "wake"]) {
+  const pose = attachment.attachmentPoseFor(motion, "chin");
+  assert.ok(pose.angle >= 8 && pose.angle <= 10, `${motion} must follow the tilted sleep base`);
+  assert.equal(pose.scaleX, 1);
+  assert.equal(pose.scaleY, 1);
+}
+const draggedCrown = attachment.attachmentPoseFor("dragging", "crown");
+const draggedChin = attachment.attachmentPoseFor("dragging", "chin");
+assert.ok(draggedCrown.scaleX < 0.7, "dragging accessories must match the smaller full-body head");
+assert.equal(draggedCrown.scaleX, draggedCrown.scaleY);
+assert.ok(draggedChin.dy < draggedCrown.dy, "dragging chin accessories must stay on the neck line");
 
 const created = memory.createUserMemory(
   "important",

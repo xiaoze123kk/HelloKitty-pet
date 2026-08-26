@@ -432,6 +432,23 @@ body {
   display: block;
 }
 
+.pet-attachment-base {
+  --attachment-dx: 0px;
+  --attachment-dy: 0px;
+  --attachment-scale-x: 1;
+  --attachment-scale-y: 1;
+  --attachment-angle: 0deg;
+  position: absolute;
+  inset: 0;
+  display: block;
+  transform-origin: 120px 120px;
+  transform:
+    translate(var(--attachment-dx), var(--attachment-dy))
+    rotate(var(--attachment-angle))
+    scale(var(--attachment-scale-x), var(--attachment-scale-y));
+  will-change: transform;
+}
+
 .pet-accessory-pose[data-layer="behind"] { z-index: 1; }
 .pet-accessory-pose[data-layer="front"] { z-index: 4; }
 
