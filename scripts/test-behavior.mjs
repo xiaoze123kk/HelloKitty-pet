@@ -58,7 +58,48 @@ const context = {
   idleActionsEnabled: true,
   sleepTransitionsEnabled: true,
   walkingEnabled: false,
+  recentBehaviors: [],
+  recentMotions: [],
+  lastInteraction: null,
+  lastTouchTarget: null,
+  lastInteractionAt: null,
+  interactionStreak: 0,
+  secondsSinceInteraction: Number.POSITIVE_INFINITY,
+  relationshipStage: "warming",
+  timeBand: "day",
+  sessionPhase: "settled",
 };
+
+const freshScores = engine.scoreBehaviors({
+  needs: { energy: 0.8, sleepiness: 0.1, socialNeed: 0.2, boredom: 0.2, curiosity: 1 },
+  context,
+  relationship,
+  cooldowns: {},
+  random: () => 0.5,
+});
+const repeatedScores = engine.scoreBehaviors({
+  needs: { energy: 0.8, sleepiness: 0.1, socialNeed: 0.2, boredom: 0.2, curiosity: 1 },
+  context: {
+    ...context,
+    recentBehaviors: [{ id: "observe", at: context.now - 1_000, date: "2026-08-20" }],
+  },
+  relationship,
+  cooldowns: {},
+  random: () => 0.5,
+});
+assert.equal(freshScores.observe.novelty, 0.08);
+assert.ok(repeatedScores.observe.repetition < 0);
+assert.ok(repeatedScores.observe.final < freshScores.observe.final);
+const disabledScores = engine.scoreBehaviors({
+  needs: { energy: 0, sleepiness: 1, socialNeed: 1, boredom: 1, curiosity: 1 },
+  context: { ...context, idleActionsEnabled: false },
+  relationship,
+  cooldowns: {},
+  random: () => 1,
+});
+for (const score of Object.values(disabledScores)) {
+  assert.equal(score.final, 0, "硬门禁关闭时 novelty 和 noise 不得重新启用行为");
+}
 
 const sleeping = engine.chooseBehavior({
   needs: { energy: 0.05, sleepiness: 1, socialNeed: 0.1, boredom: 0.05, curiosity: 0.1 },

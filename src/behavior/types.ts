@@ -132,6 +132,23 @@ export interface BehaviorPlan {
   cooldownMs: number;
 }
 
+export interface BehaviorScoreBreakdown {
+  base: number;
+  context: number;
+  relationship: number;
+  personality: number;
+  novelty: number;
+  repetition: number;
+  noise: number;
+  final: number;
+}
+
+export interface BehaviorDecision {
+  id: BehaviorId;
+  score: number;
+  breakdown: BehaviorScoreBreakdown;
+}
+
 export interface BehaviorDecisionInput {
   needs: PetNeeds;
   context: ContextSnapshot;
