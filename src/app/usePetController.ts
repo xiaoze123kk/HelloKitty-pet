@@ -43,7 +43,9 @@ import {
 } from "../memory/userMemory";
 import type { NestSnapshot } from "../nest/types";
 import type { PetVisualMotion } from "../pet/animationManifest";
+import type { PetEffectEvent } from "../effects/effectManifest";
 import type {
+  PetTouchInteraction,
   PetTouchTarget,
   PetTouchTargetId,
 } from "../pet/touchZones";
@@ -256,11 +258,13 @@ export interface PetController {
   touchTarget: PetTouchTarget | null;
   /** 长按撸猫时是否显示爱心粒子 */
   hearts: boolean;
+  /** 最近一次触摸特效的落点和重播序号。 */
+  effectEvent: PetEffectEvent;
   /** 初始化或渲染期致命错误（用于在透明窗口里显示出来，避免"隐形窗口"） */
   fatal: string | null;
   openSettings: () => void;
   closeSettings: () => void;
-  onPetClick: (target: PetTouchTarget) => void;
+  onPetClick: (interaction: PetTouchInteraction) => void;
   onPetDragStart: () => void;
   onPetDragEnd: () => void;
   onAnimationFinished: () => void;
@@ -321,6 +325,11 @@ export function usePetController(): PetController {
     useState<AccessoryId | null>(null);
   const [edgePeekSide, setEdgePeekSide] = useState<PeekEdge | null>(null);
   const [hearts, setHearts] = useState(false);
+  const [effectEvent, setEffectEvent] = useState<PetEffectEvent>({
+    revision: 0,
+    anchor: null,
+    target: null,
+  });
   const [fatal, setFatal] = useState<string | null>(null);
 
   const prefsStoreRef = useRef<PrefStore | null>(null);
@@ -1666,8 +1675,13 @@ export function usePetController(): PetController {
 
   // ---------- 交互 ----------
   const onPetClick = useCallback(
-    (target: PetTouchTarget) => {
+    ({ target, point }: PetTouchInteraction) => {
       behaviorSchedulerRef.current.cancel();
+      setEffectEvent((current) => ({
+        revision: current.revision + 1,
+        anchor: point,
+        target,
+      }));
       const progress = progressRef.current;
       let headpatReaction: HeadpatReaction | undefined;
       if (target.id === "forehead" && progress) {
@@ -1689,7 +1703,13 @@ export function usePetController(): PetController {
               ? "body_touch"
               : "headpat",
       );
-      actor.send({ type: "CLICK", at: Date.now(), target, headpatReaction });
+      actor.send({
+        type: "CLICK",
+        at: Date.now(),
+        target,
+        point,
+        headpatReaction,
+      });
     },
     [actor],
   );
@@ -1909,6 +1929,7 @@ export function usePetController(): PetController {
     edgePeekSide,
     touchTarget: snapshot.context.touchTarget,
     hearts,
+    effectEvent,
     fatal,
     openSettings,
     closeSettings,

@@ -5,7 +5,7 @@ import type {
   HeadpatReaction,
 } from "../relationship/reactionEngine";
 import type { PetVisualMotion } from "./animationManifest";
-import type { PetTouchTarget } from "./touchZones";
+import type { PetFramePoint, PetTouchTarget } from "./touchZones";
 
 export interface AnimationFlags {
   idleActions: boolean;
@@ -29,6 +29,8 @@ export interface PetContext {
   activeRitual: CompanionRitualKind | null;
   /** 最近一次单击命中的精细部位，供有方向的局部动画与台词使用。 */
   touchTarget: PetTouchTarget | null;
+  /** 最近一次单击在 240×240 逻辑帧中的坐标。 */
+  touchPoint: PetFramePoint | null;
 }
 
 export type PetEvent =
@@ -36,6 +38,7 @@ export type PetEvent =
       type: "CLICK";
       at: number;
       target?: PetTouchTarget;
+      point?: PetFramePoint;
       headpatReaction?: HeadpatReaction;
     }
   | { type: "DRAG_START" }
@@ -135,11 +138,15 @@ export const petMachine = setup({
         event.type === "PLAY_RITUAL" ? event.ritual : null,
     }),
     clearActiveRitual: assign({ activeRitual: () => null }),
-    setTouchTarget: assign({
+    setTouchInteraction: assign({
       touchTarget: ({ context, event }) =>
         event.type === "CLICK" && event.target
           ? event.target
           : context.touchTarget,
+      touchPoint: ({ context, event }) =>
+        event.type === "CLICK" && event.point
+          ? event.point
+          : context.touchPoint,
     }),
   },
   guards: {
@@ -214,72 +221,73 @@ export const petMachine = setup({
     headpatReaction: "soft",
     activeRitual: null,
     touchTarget: null,
+    touchPoint: null,
   },
   on: {
     CLICK: [
       {
         guard: "isCrazyClick",
         target: "#pet.angry",
-        actions: ["recordClick", "setTouchTarget"],
+        actions: ["recordClick", "setTouchInteraction"],
       },
       {
         guard: "isRapidClick",
         target: "#pet.shy",
-        actions: ["recordClick", "setTouchTarget"],
+        actions: ["recordClick", "setTouchInteraction"],
       },
       {
         guard: "isDoubleClick",
         target: "#pet.happy",
-        actions: ["recordClick", "setTouchTarget"],
+        actions: ["recordClick", "setTouchInteraction"],
       },
       {
         guard: "isForeheadTouch",
         target: "#pet.headpat",
-        actions: ["recordClick", "setTouchTarget", "setHeadpatReaction"],
+        actions: ["recordClick", "setTouchInteraction", "setHeadpatReaction"],
       },
       {
         guard: "isEarTouch",
         target: "#pet.earTouch",
-        actions: ["recordClick", "setTouchTarget"],
+        actions: ["recordClick", "setTouchInteraction"],
       },
       {
         guard: "isCheekTouch",
         target: "#pet.cheekTouch",
-        actions: ["recordClick", "setTouchTarget"],
+        actions: ["recordClick", "setTouchInteraction"],
       },
       {
         guard: "isNoseTouch",
         target: "#pet.noseTouch",
-        actions: ["recordClick", "setTouchTarget"],
+        actions: ["recordClick", "setTouchInteraction"],
       },
       {
         guard: "isWhiskerTouch",
         target: "#pet.whiskerTouch",
-        actions: ["recordClick", "setTouchTarget"],
+        actions: ["recordClick", "setTouchInteraction"],
       },
       {
         guard: "isAccessoryTouch",
         target: "#pet.accessoryTouch",
-        actions: ["recordClick", "setTouchTarget"],
+        actions: ["recordClick", "setTouchInteraction"],
       },
       {
         guard: "isLowerFaceTouch",
         target: "#pet.bodypat",
-        actions: ["recordClick", "setTouchTarget"],
+        actions: ["recordClick", "setTouchInteraction"],
       },
       {
         guard: "isBowTouch",
         target: "#pet.bowtouch",
-        actions: ["recordClick", "setTouchTarget"],
+        actions: ["recordClick", "setTouchInteraction"],
       },
       {
         guard: "isFaceTouch",
         target: "#pet.faceTouch",
-        actions: ["recordClick", "setTouchTarget"],
+        actions: ["recordClick", "setTouchInteraction"],
       },
       {
         target: "#pet.clicked",
-        actions: ["recordClick", "setTouchTarget"],
+        actions: ["recordClick", "setTouchInteraction"],
       },
     ],
     SHOW_DIALOGUE: [

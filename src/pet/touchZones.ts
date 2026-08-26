@@ -20,6 +20,18 @@ export interface PetTouchTarget {
   accessoryId?: AccessoryId;
 }
 
+/** 240×240 桌宠逻辑帧内的标准化坐标。 */
+export interface PetFramePoint {
+  x: number;
+  y: number;
+}
+
+/** 一次完整触摸：语义命中目标与真实落点保持在同一契约中。 */
+export interface PetTouchInteraction {
+  target: PetTouchTarget;
+  point: PetFramePoint;
+}
+
 export interface AccessoryHitRegion {
   id: AccessoryId;
   x: number;
@@ -32,6 +44,15 @@ export interface AccessoryHitRegion {
 export type PetTouchPart = "bow" | "head" | "body";
 
 const FRAME_SIZE = 240;
+
+export function clampPetFramePoint(
+  point: PetFramePoint,
+  frameSize: number = FRAME_SIZE,
+): PetFramePoint {
+  const clamp = (value: number) =>
+    Math.min(frameSize, Math.max(0, Number.isFinite(value) ? value : 0));
+  return { x: clamp(point.x), y: clamp(point.y) };
+}
 
 /**
  * 按宠物帧坐标分类点击部位。

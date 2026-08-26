@@ -90,6 +90,42 @@ body {
   --pose-brightness: 1;
   --look-x: 0px;
   --look-y: 0px;
+  --shadow-scale-x: 1;
+  --shadow-opacity: .18;
+  --shadow-blur: 4px;
+}
+
+.pet-ground-shadow {
+  position: absolute;
+  z-index: 1;
+  left: 120px;
+  top: 215px;
+  width: 104px;
+  height: 14px;
+  border-radius: 50%;
+  pointer-events: none;
+  opacity: var(--shadow-opacity);
+  background: radial-gradient(
+    ellipse,
+    rgba(107, 85, 96, .72) 0%,
+    rgba(107, 85, 96, .24) 48%,
+    rgba(107, 85, 96, 0) 76%
+  );
+  filter: blur(var(--shadow-blur));
+  transform: translateX(-50%) scaleX(var(--shadow-scale-x));
+  transform-origin: center;
+  will-change: transform, opacity, filter;
+}
+
+.pet-rig[data-motion="landing"] .pet-ground-shadow {
+  animation: ground-shadow-land 420ms cubic-bezier(.2, .75, .28, 1) both;
+}
+
+@keyframes ground-shadow-land {
+  0% { scale: 1 1; }
+  24% { scale: 1.18 .9; }
+  58% { scale: .96 1.04; }
+  100% { scale: 1 1; }
 }
 
 .pet-rig-gaze {
@@ -400,6 +436,21 @@ body {
   .pet-rig *,
   .pet-rig-gaze,
   .pet-rig-emotion {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  .doodle-fx:not(.doodle-fx-static),
+  .doodle-hearts {
+    display: none !important;
+  }
+
+  .doodle-fx-static {
+    animation: doodle-static 180ms linear forwards !important;
+  }
+
+  .sleep-zzz,
+  .sleep-zzz * {
     animation: none !important;
     transition: none !important;
   }
@@ -1165,6 +1216,131 @@ body {
   top: 60px;
   font-size: 9px;
   animation-delay: 0.12s;
+}
+
+/* ---------- 手绘涂鸦特效 ---------- */
+.doodle-fx-layer {
+  --doodle-pink: #ff7da6;
+  --doodle-gold: #f7b731;
+  --doodle-lavender: #8f7bd8;
+  --doodle-sky: #7fc4f5;
+  --doodle-ink: #6b5560;
+  --doodle-cream: #fff7fa;
+  position: absolute;
+  z-index: 16;
+  left: 30px;
+  top: 80px;
+  width: 240px;
+  height: 240px;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.doodle-fx {
+  position: absolute;
+  overflow: visible;
+  opacity: 0;
+  color: var(--doodle-pink);
+  filter: drop-shadow(0 1px 1px rgba(107, 85, 96, .15));
+  transform: translate(-50%, -50%);
+  transform-origin: center;
+  animation-delay: var(--doodle-delay);
+  animation-duration: var(--doodle-duration);
+  animation-timing-function: cubic-bezier(.2, .78, .32, 1);
+  animation-fill-mode: forwards;
+}
+
+.doodle-tone-pink { color: var(--doodle-pink); }
+.doodle-tone-gold { color: var(--doodle-gold); }
+.doodle-tone-lavender { color: var(--doodle-lavender); }
+.doodle-tone-sky { color: var(--doodle-sky); }
+.doodle-tone-ink { color: var(--doodle-ink); }
+.doodle-tone-cream {
+  color: var(--doodle-cream);
+  filter: drop-shadow(0 1px 2px rgba(107, 85, 96, .34));
+}
+
+.doodle-glyph-echo {
+  opacity: .32;
+  translate: .75px -.55px;
+}
+
+.doodle-glyph-soft-fill {
+  fill: currentColor;
+  fill-opacity: .12;
+}
+
+.doodle-move-pop { animation-name: doodle-pop; }
+.doodle-move-float { animation-name: doodle-float; }
+.doodle-move-drift { animation-name: doodle-drift; }
+.doodle-move-orbit { animation-name: doodle-orbit; }
+.doodle-move-burst { animation-name: doodle-burst; }
+
+.doodle-fx-static {
+  animation-name: doodle-static;
+  animation-delay: 0ms;
+  animation-duration: 180ms;
+}
+
+@keyframes doodle-pop {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(.34); }
+  42% { opacity: 1; transform: translate(-50%, -56%) scale(1.14); }
+  100% { opacity: 0; transform: translate(-50%, -92%) scale(.88); }
+}
+
+@keyframes doodle-float {
+  0% { opacity: 0; transform: translate(-50%, -22%) scale(.72); }
+  30% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -148%) scale(1.06); }
+}
+
+@keyframes doodle-drift {
+  0% { opacity: 0; transform: translate(-26%, -24%) scale(.68); }
+  45% { opacity: .95; }
+  100% { opacity: 0; transform: translate(-86%, -118%) scale(1.04); }
+}
+
+@keyframes doodle-orbit {
+  0% { opacity: 0; transform: translate(-78%, -24%) scale(.7); }
+  28% { opacity: 1; }
+  62% { transform: translate(-20%, -78%) scale(1.08); }
+  100% { opacity: 0; transform: translate(-82%, -104%) scale(.82); }
+}
+
+@keyframes doodle-burst {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(.24); }
+  34% { opacity: 1; transform: translate(-50%, -50%) scale(1.12); }
+  100% { opacity: 0; transform: translate(-50%, -76%) scale(1.42); }
+}
+
+@keyframes doodle-static {
+  0%, 82% { opacity: .78; transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1); }
+}
+
+.doodle-hearts {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.doodle-heart {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  color: var(--doodle-pink);
+  filter: drop-shadow(0 1px 2px rgba(107, 85, 96, .18));
+  animation: doodle-heart-rise 1.28s ease-out infinite;
+}
+
+.doodle-heart-1 { left: 77px; top: 112px; }
+.doodle-heart-2 { left: 142px; top: 104px; animation-delay: .34s; }
+.doodle-heart-3 { left: 109px; top: 83px; animation-delay: .72s; }
+
+@keyframes doodle-heart-rise {
+  0% { opacity: 0; transform: translateY(12px) rotate(-8deg) scale(.62); }
+  26% { opacity: .92; }
+  100% { opacity: 0; transform: translateY(-48px) rotate(9deg) scale(1.08); }
 }
 
 /* ---------- 设置面板 ---------- */

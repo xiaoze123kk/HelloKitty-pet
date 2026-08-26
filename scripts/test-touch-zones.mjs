@@ -42,4 +42,13 @@ assert.equal(zones.classifyTouchPart(92, 117), "head");
 assert.equal(zones.classifyTouchPart(205, 48), "bow");
 assert.equal(zones.classifyTouchPart(118, 224), "body");
 
+assert.deepEqual(zones.clampPetFramePoint({ x: -12, y: 280 }), {
+  x: 0,
+  y: 240,
+});
+assert.deepEqual(zones.clampPetFramePoint({ x: Number.NaN, y: 80 }), {
+  x: 0,
+  y: 80,
+});
+
 console.log("touch zone checks passed");

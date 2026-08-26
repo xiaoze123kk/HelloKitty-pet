@@ -70,8 +70,20 @@ export function PetRig({
     rig.style.setProperty("--pose-scale-x", String(scale));
     rig.style.setProperty("--pose-scale-y", String(pose.scaleY ?? scale));
     rig.style.setProperty("--pose-angle", `${pose.angle ?? 0}deg`);
-    rig.style.setProperty("--pose-dy", `${pose.dy ?? 0}px`);
+    const dy = pose.dy ?? 0;
+    rig.style.setProperty("--pose-dy", `${dy}px`);
     rig.style.setProperty("--pose-brightness", String(pose.brightness ?? 1));
+    const lift = Math.min(48, Math.max(0, -dy));
+    const liftRatio = lift / 48;
+    rig.style.setProperty(
+      "--shadow-scale-x",
+      String(1 - liftRatio * 0.38),
+    );
+    rig.style.setProperty(
+      "--shadow-opacity",
+      String(0.18 - liftRatio * 0.11),
+    );
+    rig.style.setProperty("--shadow-blur", `${4 + liftRatio * 4}px`);
   }, []);
 
   useEffect(() => {
@@ -114,6 +126,7 @@ export function PetRig({
       data-accessory-reaction={accessoryReaction}
       data-touch-target={touchTarget?.id ?? "none"}
     >
+      <span className="pet-ground-shadow" aria-hidden="true" />
       <div ref={gazeRef} className="pet-rig-gaze">
         <div className="pet-rig-emotion">
           {accessory?.layer === "behind" && <AccessoryLayer item={accessory} />}
@@ -144,15 +157,6 @@ export function PetRig({
           {accessory && accessory.layer !== "behind" && (
             <AccessoryLayer item={accessory} />
           )}
-          {accessoryReaction === "sparkle" && (
-            <span className="pet-accessory-sparkle" aria-hidden="true">✦</span>
-          )}
-          {motion === "celebrate" && (
-            <span className="pet-ritual-sparkles" aria-hidden="true">✦ · ✧</span>
-          )}
-          {motion === "moonGreeting" && (
-            <span className="pet-ritual-moon" aria-hidden="true">☾</span>
-          )}
           {motion === "noseBoop" && (
             <span className="pet-touch-nose-ring" aria-hidden="true" />
           )}
@@ -161,14 +165,6 @@ export function PetRig({
               className={`pet-touch-cheek pet-touch-${touchTarget?.id ?? "face"}`}
               aria-hidden="true"
             />
-          )}
-          {motion === "earTouch" && (
-            <span
-              className={`pet-touch-ear-mark pet-touch-${touchTarget?.id ?? "left_ear"}`}
-              aria-hidden="true"
-            >
-              ♪
-            </span>
           )}
         </div>
       </div>

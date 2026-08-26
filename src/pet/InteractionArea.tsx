@@ -4,9 +4,10 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 const appWindow = getCurrentWindow();
 
 import {
+  clampPetFramePoint,
   classifyTouchTarget,
   type AccessoryHitRegion,
-  type PetTouchTarget,
+  type PetTouchInteraction,
 } from "./touchZones";
 
 interface InteractionAreaProps {
@@ -14,7 +15,7 @@ interface InteractionAreaProps {
   disabled?: boolean;
   accessoryHitRegion?: AccessoryHitRegion | null;
   /** 普通点击（未触发长按/拖拽），附带点击部位 */
-  onClick: (target: PetTouchTarget) => void;
+  onClick: (interaction: PetTouchInteraction) => void;
   onDragStart: () => void;
   onDragEnd: () => void;
   onOpenSettings: () => void;
@@ -203,15 +204,20 @@ export function InteractionArea({
     }
     downRef.current = null;
     const rect = areaRef.current?.getBoundingClientRect();
-    const target =
+    const point = clampPetFramePoint(
       rect && rect.width > 0 && rect.height > 0
-        ? classifyTouchTarget(
-            ((event.clientX - rect.left) / rect.width) * 240,
-            ((event.clientY - rect.top) / rect.height) * 240,
-            accessoryHitRegion,
-          )
-        : ({ id: "face" } as const);
-    onClickRef.current(target);
+        ? {
+            x: ((event.clientX - rect.left) / rect.width) * 240,
+            y: ((event.clientY - rect.top) / rect.height) * 240,
+          }
+        : { x: 120, y: 150 },
+    );
+    const target = classifyTouchTarget(
+      point.x,
+      point.y,
+      accessoryHitRegion,
+    );
+    onClickRef.current({ target, point });
   }
 
   function handlePointerCancel() {

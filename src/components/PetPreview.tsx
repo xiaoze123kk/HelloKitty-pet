@@ -1,6 +1,8 @@
 import { normalizeAccessoryId } from "../growth/wardrobe";
+import { EffectLayer } from "../effects/EffectLayer";
 import type { PeekEdge } from "../platform/edgePeek";
 import { petMotions, type PetVisualMotion } from "../pet/animationManifest";
+import { accessoryReactionFor } from "../pet/layeredMotion";
 import { PetRig } from "../pet/PetRig";
 import type { HeadpatReaction } from "../relationship/reactionEngine";
 import type { PetTouchTargetId } from "../pet/touchZones";
@@ -55,6 +57,12 @@ export function PetPreview() {
 
   return (
     <div className="pet-root pet-preview-root">
+      <EffectLayer
+        motion={motion}
+        effectEvent={{ revision: 1, anchor: null, target: touchTarget }}
+        heartsActive={params.has("hearts")}
+        accessoryReaction={accessoryReactionFor(accessoryId, motion)}
+      />
       <div className="pet-drag-area">
         <PetRig
           motion={motion}

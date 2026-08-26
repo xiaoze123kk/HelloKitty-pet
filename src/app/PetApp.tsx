@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
-import { Hearts } from "../components/Hearts";
+import { EffectLayer } from "../effects/EffectLayer";
 import { MotionDebugPanel } from "../components/MotionDebugPanel";
-import { MotionEffects } from "../components/MotionEffects";
 import { SettingsPanel } from "../components/SettingsPanel";
 import { SleepZzz } from "../components/SleepZzz";
 import { SpeechBubble } from "../components/SpeechBubble";
 import { InteractionArea } from "../pet/InteractionArea";
 import { PetRig } from "../pet/PetRig";
+import { accessoryReactionFor } from "../pet/layeredMotion";
 import { WARDROBE_CATALOG } from "../growth/wardrobe";
 import { usePetController } from "./usePetController";
 
@@ -15,6 +15,10 @@ export function PetApp() {
   const selectedAccessory = controller.selectedAccessoryId
     ? WARDROBE_CATALOG.find((item) => item.id === controller.selectedAccessoryId) ?? null
     : null;
+  const accessoryReaction = accessoryReactionFor(
+    controller.selectedAccessoryId,
+    controller.motion,
+  );
   const [debugOpen, setDebugOpen] = useState(
     () =>
       new URLSearchParams(window.location.search).has("debug") ||
@@ -73,9 +77,12 @@ export function PetApp() {
 
       <SleepZzz motion={controller.motion} />
 
-      <MotionEffects motion={controller.motion} />
-
-      <Hearts active={controller.hearts} />
+      <EffectLayer
+        motion={controller.motion}
+        effectEvent={controller.effectEvent}
+        heartsActive={controller.hearts}
+        accessoryReaction={accessoryReaction}
+      />
 
       <InteractionArea
         disabled={controller.settingsOpen || debugOpen}
