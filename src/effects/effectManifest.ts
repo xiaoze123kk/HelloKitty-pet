@@ -26,6 +26,7 @@ export interface PetEffectEvent {
   revision: number;
   anchor: PetFramePoint | null;
   target: PetTouchTarget | null;
+  strength?: number;
 }
 
 export interface DoodleEffectItem {
@@ -267,9 +268,31 @@ export function resolveEffectItems(
   if (!preset) return [];
   const anchor = preset.eventAnchored && event.anchor ? event.anchor : preset.anchor;
 
-  return preset.items.slice(0, MAX_EFFECT_INSTANCES).map(({ dx, dy, ...template }) => ({
+  const resolved = preset.items.slice(0, MAX_EFFECT_INSTANCES).map(({ dx, dy, ...template }) => ({
     ...template,
     x: clampEffectCoordinate(anchor.x + dx, 14, 226),
     y: clampEffectCoordinate(anchor.y + dy, 14, 224),
   }));
+  if (motion !== "landing") return resolved;
+
+  const strength = clampEffectCoordinate(event.strength ?? 0.18, 0.18, 1);
+  const scaled = resolved.map((effect) => ({
+    ...effect,
+    size: Math.round(effect.size * (0.82 + strength * 0.34)),
+  }));
+  if (strength < 0.66 || scaled.length >= MAX_EFFECT_INSTANCES) return scaled;
+  return [
+    ...scaled,
+    {
+      glyph: "dust",
+      tone: "cream",
+      x: 120,
+      y: 210,
+      size: Math.round(20 + strength * 14),
+      rotate: 2,
+      delayMs: 85,
+      durationMs: 620,
+      movement: "burst",
+    },
+  ];
 }

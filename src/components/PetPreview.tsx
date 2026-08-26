@@ -5,6 +5,10 @@ import type { PeekEdge } from "../platform/edgePeek";
 import { petMotions, type PetVisualMotion } from "../pet/animationManifest";
 import { accessoryReactionFor } from "../pet/layeredMotion";
 import { PetRig } from "../pet/PetRig";
+import {
+  STILL_DRAG_MOTION,
+  STILL_DRAG_RELEASE,
+} from "../pet/dragDynamics";
 import type { HeadpatReaction } from "../relationship/reactionEngine";
 import type { PetTouchTargetId } from "../pet/touchZones";
 
@@ -96,6 +100,8 @@ export function PetPreview() {
           headpatReaction={headpatReaction}
           edgePeekSide={edgePeekSide}
           touchTarget={touchTarget}
+          dragMotion={STILL_DRAG_MOTION}
+          dragRelease={STILL_DRAG_RELEASE}
           gazeFollow={false}
         />
       </div>

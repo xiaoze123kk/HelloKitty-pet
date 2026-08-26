@@ -44,6 +44,12 @@ import {
 import type { NestSnapshot } from "../nest/types";
 import type { PetVisualMotion } from "../pet/animationManifest";
 import type { PetEffectEvent } from "../effects/effectManifest";
+import {
+  STILL_DRAG_MOTION,
+  STILL_DRAG_RELEASE,
+  type DragMotion,
+  type DragRelease,
+} from "../pet/dragDynamics";
 import type {
   PetTouchInteraction,
   PetTouchTarget,
@@ -260,13 +266,18 @@ export interface PetController {
   hearts: boolean;
   /** 最近一次触摸特效的落点和重播序号。 */
   effectEvent: PetEffectEvent;
+  /** 原生窗口拖动采样出的即时视觉动势。 */
+  dragMotion: DragMotion;
+  /** 松手时冻结的落地力度与方向。 */
+  dragRelease: DragRelease;
   /** 初始化或渲染期致命错误（用于在透明窗口里显示出来，避免"隐形窗口"） */
   fatal: string | null;
   openSettings: () => void;
   closeSettings: () => void;
   onPetClick: (interaction: PetTouchInteraction) => void;
   onPetDragStart: () => void;
-  onPetDragEnd: () => void;
+  onPetDragMotion: (motion: DragMotion) => void;
+  onPetDragEnd: (release: DragRelease) => void;
   onAnimationFinished: () => void;
   onHoldStart: () => void;
   onHoldEnd: () => void;
@@ -330,6 +341,8 @@ export function usePetController(): PetController {
     anchor: null,
     target: null,
   });
+  const [dragMotion, setDragMotion] = useState<DragMotion>(STILL_DRAG_MOTION);
+  const [dragRelease, setDragRelease] = useState<DragRelease>(STILL_DRAG_RELEASE);
   const [fatal, setFatal] = useState<string | null>(null);
 
   const prefsStoreRef = useRef<PrefStore | null>(null);
@@ -1716,11 +1729,24 @@ export function usePetController(): PetController {
 
   const onPetDragStart = useCallback(() => {
     behaviorSchedulerRef.current.cancel();
+    setDragMotion(STILL_DRAG_MOTION);
     actor.send({ type: "DRAG_START" });
   }, [actor]);
 
-  const onPetDragEnd = useCallback(() => {
+  const onPetDragMotion = useCallback((motion: DragMotion) => {
+    setDragMotion(motion);
+  }, []);
+
+  const onPetDragEnd = useCallback((release: DragRelease) => {
     behaviorSchedulerRef.current.cancel();
+    setDragMotion(STILL_DRAG_MOTION);
+    setDragRelease(release);
+    setEffectEvent((current) => ({
+      revision: current.revision + 1,
+      anchor: { x: 120, y: 216 },
+      target: null,
+      strength: release.dustStrength,
+    }));
     recordRelationshipEventRef.current("drag");
     actor.send({ type: "DRAG_END" });
     tryShowRef.current({ type: "dragEnd" });
@@ -1930,11 +1956,14 @@ export function usePetController(): PetController {
     touchTarget: snapshot.context.touchTarget,
     hearts,
     effectEvent,
+    dragMotion,
+    dragRelease,
     fatal,
     openSettings,
     closeSettings,
     onPetClick,
     onPetDragStart,
+    onPetDragMotion,
     onPetDragEnd,
     onAnimationFinished,
     onHoldStart,

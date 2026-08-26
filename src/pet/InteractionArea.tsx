@@ -9,6 +9,14 @@ import {
   type AccessoryHitRegion,
   type PetTouchInteraction,
 } from "./touchZones";
+import {
+  releaseFromDragMotion,
+  sampleDragMotion,
+  STILL_DRAG_MOTION,
+  type DragMotion,
+  type DragRelease,
+  type DragWindowSample,
+} from "./dragDynamics";
 
 interface InteractionAreaProps {
   children: ReactNode;
@@ -17,7 +25,8 @@ interface InteractionAreaProps {
   /** 普通点击（未触发长按/拖拽），附带点击部位 */
   onClick: (interaction: PetTouchInteraction) => void;
   onDragStart: () => void;
-  onDragEnd: () => void;
+  onDragMotion?: (motion: DragMotion) => void;
+  onDragEnd: (release: DragRelease) => void;
   onOpenSettings: () => void;
   /** Ctrl+滚轮缩放（deltaY < 0 放大，> 0 缩小） */
   onWheelZoom?: (deltaY: number) => void;
@@ -46,6 +55,7 @@ export function InteractionArea({
   accessoryHitRegion,
   onClick,
   onDragStart,
+  onDragMotion,
   onDragEnd,
   onOpenSettings,
   onWheelZoom,
@@ -59,9 +69,12 @@ export function InteractionArea({
   const holdTimerRef = useRef<number | null>(null);
   const lastMovedAtRef = useRef(0);
   const startedByMoveRef = useRef(false);
+  const lastWindowSampleRef = useRef<DragWindowSample | null>(null);
+  const lastDragMotionRef = useRef<DragMotion>(STILL_DRAG_MOTION);
 
   const onClickRef = useRef(onClick);
   const onDragStartRef = useRef(onDragStart);
+  const onDragMotionRef = useRef(onDragMotion);
   const onDragEndRef = useRef(onDragEnd);
   const onWheelZoomRef = useRef(onWheelZoom);
   const onHoldStartRef = useRef(onHoldStart);
@@ -69,6 +82,7 @@ export function InteractionArea({
   const disabledRef = useRef(disabled);
   onClickRef.current = onClick;
   onDragStartRef.current = onDragStart;
+  onDragMotionRef.current = onDragMotion;
   onDragEndRef.current = onDragEnd;
   onWheelZoomRef.current = onWheelZoom;
   onHoldStartRef.current = onHoldStart;
@@ -96,7 +110,7 @@ export function InteractionArea({
   useEffect(() => {
     let unlistenMoved: (() => void) | undefined;
     let disposed = false;
-    appWindow.onMoved(() => {
+    appWindow.onMoved(({ payload: position }) => {
       lastMovedAtRef.current = Date.now();
       if (downRef.current && !draggingRef.current) {
         // 原生拖拽开始：打断可能已触发的长按撸猫
@@ -108,6 +122,25 @@ export function InteractionArea({
         startedByMoveRef.current = true;
         onDragStartRef.current();
       }
+      if (!draggingRef.current) return;
+
+      const current: DragWindowSample = {
+        x: position.x,
+        y: position.y,
+        at: performance.now(),
+      };
+      const previous = lastWindowSampleRef.current;
+      lastWindowSampleRef.current = current;
+      if (!previous) return;
+
+      const motion = sampleDragMotion(
+        previous,
+        current,
+        lastDragMotionRef.current,
+        window.devicePixelRatio || 1,
+      );
+      lastDragMotionRef.current = motion;
+      onDragMotionRef.current?.(motion);
     }).then((unlisten) => {
       if (disposed) {
         unlisten();
@@ -122,9 +155,7 @@ export function InteractionArea({
         draggingRef.current &&
         Date.now() - lastMovedAtRef.current > DRAG_END_QUIET_MS
       ) {
-        draggingRef.current = false;
-        downRef.current = null;
-        onDragEndRef.current();
+        finishDrag();
       }
     }, 250);
 
@@ -139,12 +170,28 @@ export function InteractionArea({
     };
   }, []);
 
+  function resetDragMotion() {
+    lastWindowSampleRef.current = null;
+    lastDragMotionRef.current = STILL_DRAG_MOTION;
+    onDragMotionRef.current?.(STILL_DRAG_MOTION);
+  }
+
+  function finishDrag() {
+    const release = releaseFromDragMotion(lastDragMotionRef.current);
+    draggingRef.current = false;
+    downRef.current = null;
+    lastWindowSampleRef.current = null;
+    lastDragMotionRef.current = STILL_DRAG_MOTION;
+    onDragEndRef.current(release);
+  }
+
   function handlePointerDown(event: PointerEvent<HTMLDivElement>) {
     if (disabled) return;
     if (event.button !== 0) return;
     downRef.current = { x: event.clientX, y: event.clientY, time: Date.now() };
     draggingRef.current = false;
     startedByMoveRef.current = false;
+    resetDragMotion();
     if (holdTimerRef.current !== null) {
       window.clearTimeout(holdTimerRef.current);
     }
@@ -197,9 +244,7 @@ export function InteractionArea({
       return;
     }
     if (draggingRef.current || startedByMoveRef.current) {
-      draggingRef.current = false;
-      downRef.current = null;
-      onDragEndRef.current();
+      finishDrag();
       return;
     }
     downRef.current = null;
@@ -232,9 +277,7 @@ export function InteractionArea({
       return;
     }
     if (draggingRef.current) {
-      draggingRef.current = false;
-      downRef.current = null;
-      onDragEndRef.current();
+      finishDrag();
     } else {
       downRef.current = null;
     }

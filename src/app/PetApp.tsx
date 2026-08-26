@@ -93,6 +93,7 @@ export function PetApp() {
         }
         onClick={controller.onPetClick}
         onDragStart={controller.onPetDragStart}
+        onDragMotion={controller.onPetDragMotion}
         onDragEnd={controller.onPetDragEnd}
         onOpenSettings={controller.openSettings}
         onWheelZoom={controller.onWheelZoom}
@@ -106,6 +107,8 @@ export function PetApp() {
           headpatReaction={controller.headpatReaction}
           edgePeekSide={controller.edgePeekSide}
           touchTarget={controller.touchTarget}
+          dragMotion={controller.dragMotion}
+          dragRelease={controller.dragRelease}
           onFinished={controller.onAnimationFinished}
           gazeFollow={
             controller.animationPrefs.gazeFollow && !controller.settingsOpen

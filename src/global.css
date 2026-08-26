@@ -75,6 +75,7 @@ body {
 /* ---------- 分层桌宠骨架 ---------- */
 .pet-rig,
 .pet-rig-gaze,
+.pet-rig-drag-response,
 .pet-rig-emotion {
   position: relative;
   width: 240px;
@@ -101,6 +102,15 @@ body {
   --bow-pose-scale-y: 1;
   --bow-pose-angle: 0deg;
   --bow-pose-dy: 0px;
+  --drag-lag-x: 0px;
+  --drag-lag-y: 0px;
+  --drag-lean: 0deg;
+  --release-lag-x: 0px;
+  --release-lag-y: 0px;
+  --release-lean: 0deg;
+  --release-squash-x: 1;
+  --release-squash-y: 1;
+  --landing-shadow-scale: 1.18;
 }
 
 .pet-ground-shadow {
@@ -131,7 +141,7 @@ body {
 
 @keyframes ground-shadow-land {
   0% { scale: 1 1; }
-  24% { scale: 1.18 .9; }
+  24% { scale: var(--landing-shadow-scale) .88; }
   58% { scale: .96 1.04; }
   100% { scale: 1 1; }
 }
@@ -139,6 +149,34 @@ body {
 .pet-rig-gaze {
   transform-origin: center 72%;
   transition: transform 180ms ease-out;
+}
+
+.pet-rig-drag-response {
+  transform-origin: center 72%;
+  will-change: transform;
+}
+
+.pet-rig[data-motion="dragging"] .pet-rig-drag-response {
+  transform:
+    translate(var(--drag-lag-x), var(--drag-lag-y))
+    rotate(var(--drag-lean));
+  transition: transform 72ms linear;
+}
+
+.pet-rig[data-motion="landing"] .pet-rig-drag-response {
+  animation: drag-release-settle 480ms cubic-bezier(.18, .76, .26, 1) both;
+}
+
+@keyframes drag-release-settle {
+  0% {
+    transform:
+      translate(var(--release-lag-x), var(--release-lag-y))
+      rotate(var(--release-lean))
+      scale(var(--release-squash-x), var(--release-squash-y));
+  }
+  46% { transform: translate(0, 1px) rotate(0deg) scale(.992, 1.012); }
+  72% { transform: translate(0, -1px) rotate(0deg) scale(1.004, .998); }
+  100% { transform: translate(0, 0) rotate(0deg) scale(1, 1); }
 }
 
 .pet-rig-follow-pose {
@@ -471,6 +509,7 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .pet-rig *,
   .pet-rig-gaze,
+  .pet-rig-drag-response,
   .pet-rig-emotion {
     animation: none !important;
     transition: none !important;

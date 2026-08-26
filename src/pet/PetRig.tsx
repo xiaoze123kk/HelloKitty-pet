@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, type CSSProperties } from "react";
 import {
   WARDROBE_ATLAS_URL,
   WARDROBE_CATALOG,
@@ -22,6 +22,7 @@ import {
 import { accessoryReactionFor } from "./layeredMotion";
 import type { MotionKeyframe } from "./proceduralMotion";
 import { ProceduralAnimation } from "./ProceduralAnimation";
+import type { DragMotion, DragRelease } from "./dragDynamics";
 
 interface PetRigProps {
   motion: PetVisualMotion;
@@ -30,6 +31,8 @@ interface PetRigProps {
   headpatReaction: HeadpatReaction;
   edgePeekSide: PeekEdge | null;
   touchTarget: PetTouchTarget | null;
+  dragMotion: DragMotion;
+  dragRelease: DragRelease;
   onFinished?: () => void;
   gazeFollow?: boolean;
 }
@@ -81,6 +84,8 @@ export function PetRig({
   headpatReaction,
   edgePeekSide,
   touchTarget,
+  dragMotion,
+  dragRelease,
   onFinished,
   gazeFollow = false,
 }: PetRigProps) {
@@ -98,6 +103,17 @@ export function PetRig({
     ? WARDROBE_CATALOG.find((item) => item.id === accessoryId) ?? null
     : null;
   const accessoryReaction = accessoryReactionFor(accessoryId, motion);
+  const dragStyle = {
+    "--drag-lag-x": `${dragMotion.lagX.toFixed(2)}px`,
+    "--drag-lag-y": `${dragMotion.lagY.toFixed(2)}px`,
+    "--drag-lean": `${dragMotion.leanDeg.toFixed(2)}deg`,
+    "--release-lag-x": `${dragRelease.lagX.toFixed(2)}px`,
+    "--release-lag-y": `${dragRelease.lagY.toFixed(2)}px`,
+    "--release-lean": `${dragRelease.leanDeg.toFixed(2)}deg`,
+    "--release-squash-x": dragRelease.squashX.toFixed(3),
+    "--release-squash-y": dragRelease.squashY.toFixed(3),
+    "--landing-shadow-scale": dragRelease.shadowScale.toFixed(3),
+  } as CSSProperties;
 
   const mirrorPose = useCallback((pose: MotionKeyframe) => {
     const rig = rigRef.current;
@@ -232,50 +248,53 @@ export function PetRig({
       data-peek-edge={edgePeekSide ?? "none"}
       data-accessory-reaction={accessoryReaction}
       data-touch-target={touchTarget?.id ?? "none"}
+      style={dragStyle}
     >
       <span className="pet-ground-shadow" aria-hidden="true" />
       <div ref={gazeRef} className="pet-rig-gaze">
-        <div className="pet-rig-emotion">
-          {accessory?.layer === "behind" && <AccessoryLayer item={accessory} />}
+        <div className="pet-rig-drag-response">
+          <div className="pet-rig-emotion">
+            {accessory?.layer === "behind" && <AccessoryLayer item={accessory} />}
 
-          <ProceduralAnimation
-            motion={motion}
-            zoom={zoom}
-            onFinished={onFinished}
-            onPose={mirrorPose}
-          />
-
-          <div className="pet-bow-sheen-pose pet-layer-bow-pose" aria-hidden="true">
-            <span className="pet-bow-sheen" />
-          </div>
-
-          <div className="pet-face-dynamics pet-rig-follow-pose" aria-hidden="true">
-            <span className="pet-eye-glint pet-eye-glint-left" />
-            <span className="pet-eye-glint pet-eye-glint-right" />
-            <span className="pet-whiskers pet-whiskers-left">
-              <i />
-              <i />
-              <i />
-            </span>
-            <span className="pet-whiskers pet-whiskers-right">
-              <i />
-              <i />
-              <i />
-            </span>
-          </div>
-
-          {accessory && accessory.layer !== "behind" && (
-            <AccessoryLayer item={accessory} />
-          )}
-          {motion === "noseBoop" && (
-            <span className="pet-touch-nose-ring" aria-hidden="true" />
-          )}
-          {motion === "cheekTouch" && (
-            <span
-              className={`pet-touch-cheek pet-touch-${touchTarget?.id ?? "face"}`}
-              aria-hidden="true"
+            <ProceduralAnimation
+              motion={motion}
+              zoom={zoom}
+              onFinished={onFinished}
+              onPose={mirrorPose}
             />
-          )}
+
+            <div className="pet-bow-sheen-pose pet-layer-bow-pose" aria-hidden="true">
+              <span className="pet-bow-sheen" />
+            </div>
+
+            <div className="pet-face-dynamics pet-rig-follow-pose" aria-hidden="true">
+              <span className="pet-eye-glint pet-eye-glint-left" />
+              <span className="pet-eye-glint pet-eye-glint-right" />
+              <span className="pet-whiskers pet-whiskers-left">
+                <i />
+                <i />
+                <i />
+              </span>
+              <span className="pet-whiskers pet-whiskers-right">
+                <i />
+                <i />
+                <i />
+              </span>
+            </div>
+
+            {accessory && accessory.layer !== "behind" && (
+              <AccessoryLayer item={accessory} />
+            )}
+            {motion === "noseBoop" && (
+              <span className="pet-touch-nose-ring" aria-hidden="true" />
+            )}
+            {motion === "cheekTouch" && (
+              <span
+                className={`pet-touch-cheek pet-touch-${touchTarget?.id ?? "face"}`}
+                aria-hidden="true"
+              />
+            )}
+          </div>
         </div>
       </div>
     </div>

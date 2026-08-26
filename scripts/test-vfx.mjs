@@ -81,6 +81,16 @@ assert.deepEqual(
   [],
   "idle must not leave decorative effect nodes behind",
 );
+const softLanding = manifest.resolveEffectItems("landing", {
+  ...event,
+  strength: 0.2,
+});
+const hardLanding = manifest.resolveEffectItems("landing", {
+  ...event,
+  strength: 1,
+});
+assert.ok(hardLanding.length > softLanding.length);
+assert.ok(hardLanding[0].size > softLanding[0].size);
 
 const decorativeSources = [
   "../src/effects/DoodleGlyph.tsx",
