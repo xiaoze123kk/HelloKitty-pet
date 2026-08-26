@@ -9,6 +9,7 @@ import {
   STILL_DRAG_MOTION,
   STILL_DRAG_RELEASE,
 } from "../pet/dragDynamics";
+import type { MicroCue } from "../pet/microMotion";
 import type { HeadpatReaction } from "../relationship/reactionEngine";
 import type { PetTouchTargetId } from "../pet/touchZones";
 
@@ -32,6 +33,13 @@ const TOUCH_TARGETS = new Set<PetTouchTargetId>([
   "lower_face",
   "face",
   "accessory",
+]);
+const MICRO_CUES = new Set<MicroCue>([
+  "none",
+  "ear-left",
+  "ear-right",
+  "nose-wiggle",
+  "soft-lean",
 ]);
 
 /** 仅开发环境使用的无 Tauri 依赖视觉校准页。 */
@@ -72,6 +80,11 @@ export function PetPreview() {
             : {}),
         }
       : null;
+  const requestedMicroCue = params.get("microCue") as MicroCue | null;
+  const microCueOverride =
+    requestedMicroCue && MICRO_CUES.has(requestedMicroCue)
+      ? requestedMicroCue
+      : undefined;
 
   useEffect(() => {
     setSequenceIndex(0);
@@ -102,6 +115,8 @@ export function PetPreview() {
           touchTarget={touchTarget}
           dragMotion={STILL_DRAG_MOTION}
           dragRelease={STILL_DRAG_RELEASE}
+          microMotion={params.get("micro") !== "off"}
+          microCueOverride={microCueOverride}
           gazeFollow={false}
         />
       </div>

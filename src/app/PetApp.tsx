@@ -109,6 +109,7 @@ export function PetApp() {
           touchTarget={controller.touchTarget}
           dragMotion={controller.dragMotion}
           dragRelease={controller.dragRelease}
+          microMotion={controller.animationPrefs.microMotion}
           onFinished={controller.onAnimationFinished}
           gazeFollow={
             controller.animationPrefs.gazeFollow && !controller.settingsOpen

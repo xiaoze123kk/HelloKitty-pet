@@ -19,6 +19,8 @@ export interface AnimationPreferences {
   petting: boolean;
   /** 身体朝鼠标方向轻微转头 */
   gazeFollow: boolean;
+  /** 稀疏呼吸、耳朵轻颤、鼻尖微动与柔和侧倾 */
+  microMotion: boolean;
   /** 逗猫棒：快速划动鼠标时抬头看 / 连续划动追扑光标 */
   teasing: boolean;
   /** 桌面水平散步 */
@@ -31,6 +33,7 @@ export const DEFAULT_ANIMATIONS: AnimationPreferences = {
   dragEffects: true,
   petting: true,
   gazeFollow: true,
+  microMotion: true,
   teasing: true,
   /** 散步默认关闭，由用户在设置里主动开启 */
   walking: false,
@@ -111,6 +114,7 @@ function normalizeAnimations(
     dragEffects: source.dragEffects ?? DEFAULT_ANIMATIONS.dragEffects,
     petting: source.petting ?? DEFAULT_ANIMATIONS.petting,
     gazeFollow: source.gazeFollow ?? DEFAULT_ANIMATIONS.gazeFollow,
+    microMotion: source.microMotion ?? DEFAULT_ANIMATIONS.microMotion,
     teasing: source.teasing ?? DEFAULT_ANIMATIONS.teasing,
     walking: source.walking ?? DEFAULT_ANIMATIONS.walking,
   };

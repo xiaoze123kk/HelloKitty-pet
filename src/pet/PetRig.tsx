@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, type CSSProperties } from "react";
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import {
   WARDROBE_ATLAS_URL,
   WARDROBE_CATALOG,
@@ -23,6 +23,12 @@ import { accessoryReactionFor } from "./layeredMotion";
 import type { MotionKeyframe } from "./proceduralMotion";
 import { ProceduralAnimation } from "./ProceduralAnimation";
 import type { DragMotion, DragRelease } from "./dragDynamics";
+import {
+  microProfileForMotion,
+  MICRO_MOTION_OFF,
+  scheduleMicroCue,
+  type MicroCue,
+} from "./microMotion";
 
 interface PetRigProps {
   motion: PetVisualMotion;
@@ -33,6 +39,8 @@ interface PetRigProps {
   touchTarget: PetTouchTarget | null;
   dragMotion: DragMotion;
   dragRelease: DragRelease;
+  microMotion: boolean;
+  microCueOverride?: MicroCue;
   onFinished?: () => void;
   gazeFollow?: boolean;
 }
@@ -86,11 +94,14 @@ export function PetRig({
   touchTarget,
   dragMotion,
   dragRelease,
+  microMotion,
+  microCueOverride,
   onFinished,
   gazeFollow = false,
 }: PetRigProps) {
   const rigRef = useRef<HTMLDivElement | null>(null);
   const gazeRef = useRef<HTMLDivElement | null>(null);
+  const [microCue, setMicroCue] = useState<MicroCue>("none");
   const layerTargetRef = useRef<LayerPose>(NEUTRAL_LAYER_POSE);
   const accessorySpringRef = useRef<LayerSpringState>(
     createLayerSpringState(NEUTRAL_LAYER_POSE),
@@ -103,7 +114,11 @@ export function PetRig({
     ? WARDROBE_CATALOG.find((item) => item.id === accessoryId) ?? null
     : null;
   const accessoryReaction = accessoryReactionFor(accessoryId, motion);
-  const dragStyle = {
+  const microProfile = microMotion
+    ? microProfileForMotion(motion)
+    : MICRO_MOTION_OFF;
+  const activeMicroCue = microCueOverride ?? microCue;
+  const rigStyle = {
     "--drag-lag-x": `${dragMotion.lagX.toFixed(2)}px`,
     "--drag-lag-y": `${dragMotion.lagY.toFixed(2)}px`,
     "--drag-lean": `${dragMotion.leanDeg.toFixed(2)}deg`,
@@ -113,7 +128,57 @@ export function PetRig({
     "--release-squash-x": dragRelease.squashX.toFixed(3),
     "--release-squash-y": dragRelease.squashY.toFixed(3),
     "--landing-shadow-scale": dragRelease.shadowScale.toFixed(3),
+    "--micro-breath-ms": `${microProfile.breathMs}ms`,
+    "--micro-breath-scale-x": microProfile.breathScaleX.toFixed(3),
+    "--micro-breath-scale-y": microProfile.breathScaleY.toFixed(3),
+    "--micro-breath-lift": `${microProfile.breathLift.toFixed(2)}px`,
   } as CSSProperties;
+
+  useEffect(() => {
+    setMicroCue("none");
+    if (microCueOverride !== undefined || !microMotion || !microProfile.allowCues) {
+      return;
+    }
+
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const timers = new Set<number>();
+    let disposed = false;
+
+    const clearTimers = () => {
+      for (const timer of timers) window.clearTimeout(timer);
+      timers.clear();
+    };
+    const schedule = () => {
+      if (disposed || reduced.matches) return;
+      const next = scheduleMicroCue(microProfile);
+      if (!next) return;
+      const cueTimer = window.setTimeout(() => {
+        timers.delete(cueTimer);
+        if (disposed || reduced.matches) return;
+        setMicroCue(next.cue);
+        const clearTimer = window.setTimeout(() => {
+          timers.delete(clearTimer);
+          setMicroCue("none");
+          schedule();
+        }, next.durationMs);
+        timers.add(clearTimer);
+      }, next.delayMs);
+      timers.add(cueTimer);
+    };
+    const onReducedMotionChange = () => {
+      clearTimers();
+      setMicroCue("none");
+      if (!reduced.matches) schedule();
+    };
+
+    reduced.addEventListener("change", onReducedMotionChange);
+    schedule();
+    return () => {
+      disposed = true;
+      reduced.removeEventListener("change", onReducedMotionChange);
+      clearTimers();
+    };
+  }, [microCueOverride, microMotion, microProfile]);
 
   const mirrorPose = useCallback((pose: MotionKeyframe) => {
     const rig = rigRef.current;
@@ -248,52 +313,62 @@ export function PetRig({
       data-peek-edge={edgePeekSide ?? "none"}
       data-accessory-reaction={accessoryReaction}
       data-touch-target={touchTarget?.id ?? "none"}
-      style={dragStyle}
+      data-micro-active={microProfile.active ? "true" : "false"}
+      data-micro-mood={microProfile.id}
+      data-micro-cue={activeMicroCue}
+      style={rigStyle}
     >
       <span className="pet-ground-shadow" aria-hidden="true" />
       <div ref={gazeRef} className="pet-rig-gaze">
         <div className="pet-rig-drag-response">
-          <div className="pet-rig-emotion">
-            {accessory?.layer === "behind" && <AccessoryLayer item={accessory} />}
+          <div className="pet-rig-vital">
+            <div className="pet-rig-micro-response">
+              <div className="pet-rig-emotion">
+                {accessory?.layer === "behind" && <AccessoryLayer item={accessory} />}
 
-            <ProceduralAnimation
-              motion={motion}
-              zoom={zoom}
-              onFinished={onFinished}
-              onPose={mirrorPose}
-            />
+                <ProceduralAnimation
+                  motion={motion}
+                  zoom={zoom}
+                  onFinished={onFinished}
+                  onPose={mirrorPose}
+                />
 
-            <div className="pet-bow-sheen-pose pet-layer-bow-pose" aria-hidden="true">
-              <span className="pet-bow-sheen" />
+                <div className="pet-bow-sheen-pose pet-layer-bow-pose" aria-hidden="true">
+                  <span className="pet-bow-sheen" />
+                </div>
+
+                <div className="pet-face-dynamics pet-rig-follow-pose" aria-hidden="true">
+                  <span className="pet-eye-glint pet-eye-glint-left" />
+                  <span className="pet-eye-glint pet-eye-glint-right" />
+                  <span className="pet-micro-ear pet-micro-ear-left" />
+                  <span className="pet-micro-ear pet-micro-ear-right" />
+                  <span className="pet-micro-nose" />
+                  <span className="pet-whiskers pet-whiskers-left">
+                    <i />
+                    <i />
+                    <i />
+                  </span>
+                  <span className="pet-whiskers pet-whiskers-right">
+                    <i />
+                    <i />
+                    <i />
+                  </span>
+                </div>
+
+                {accessory && accessory.layer !== "behind" && (
+                  <AccessoryLayer item={accessory} />
+                )}
+                {motion === "noseBoop" && (
+                  <span className="pet-touch-nose-ring" aria-hidden="true" />
+                )}
+                {motion === "cheekTouch" && (
+                  <span
+                    className={`pet-touch-cheek pet-touch-${touchTarget?.id ?? "face"}`}
+                    aria-hidden="true"
+                  />
+                )}
+              </div>
             </div>
-
-            <div className="pet-face-dynamics pet-rig-follow-pose" aria-hidden="true">
-              <span className="pet-eye-glint pet-eye-glint-left" />
-              <span className="pet-eye-glint pet-eye-glint-right" />
-              <span className="pet-whiskers pet-whiskers-left">
-                <i />
-                <i />
-                <i />
-              </span>
-              <span className="pet-whiskers pet-whiskers-right">
-                <i />
-                <i />
-                <i />
-              </span>
-            </div>
-
-            {accessory && accessory.layer !== "behind" && (
-              <AccessoryLayer item={accessory} />
-            )}
-            {motion === "noseBoop" && (
-              <span className="pet-touch-nose-ring" aria-hidden="true" />
-            )}
-            {motion === "cheekTouch" && (
-              <span
-                className={`pet-touch-cheek pet-touch-${touchTarget?.id ?? "face"}`}
-                aria-hidden="true"
-              />
-            )}
           </div>
         </div>
       </div>

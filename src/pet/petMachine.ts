@@ -13,6 +13,7 @@ export interface AnimationFlags {
   dragEffects: boolean;
   petting: boolean;
   gazeFollow: boolean;
+  microMotion: boolean;
   teasing: boolean;
   walking: boolean;
 }
@@ -214,6 +215,7 @@ export const petMachine = setup({
       dragEffects: true,
       petting: true,
       gazeFollow: true,
+      microMotion: true,
       teasing: true,
       // 与 DEFAULT_ANIMATIONS 保持一致：散步默认关闭
       walking: false,

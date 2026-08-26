@@ -1,6 +1,6 @@
 [package]
 name = "kittypet"
-version = "0.10.3"
+version = "0.11.0"
 description = "A private desktop pet built with Tauri"
 authors = ["Lenovo"]
 edition = "2021"

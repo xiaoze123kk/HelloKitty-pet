@@ -179,6 +179,20 @@ export function SettingsPanel({
 
       <label className="settings-row">
         <span>
+          <strong>生命感微动作</strong>
+          <small>呼吸 · 耳朵轻颤 · 鼻尖微动 · 柔和侧倾</small>
+        </span>
+        <input
+          type="checkbox"
+          checked={animations.microMotion}
+          onChange={(event) =>
+            onToggleAnimation("microMotion", event.target.checked)
+          }
+        />
+      </label>
+
+      <label className="settings-row">
+        <span>
           <strong>逗猫棒互动</strong>
           <small>快速划动鼠标它会看过来；连续划动会扑着追</small>
         </span>

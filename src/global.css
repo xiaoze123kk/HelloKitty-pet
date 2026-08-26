@@ -76,6 +76,8 @@ body {
 .pet-rig,
 .pet-rig-gaze,
 .pet-rig-drag-response,
+.pet-rig-vital,
+.pet-rig-micro-response,
 .pet-rig-emotion {
   position: relative;
   width: 240px;
@@ -111,6 +113,10 @@ body {
   --release-squash-x: 1;
   --release-squash-y: 1;
   --landing-shadow-scale: 1.18;
+  --micro-breath-ms: 4800ms;
+  --micro-breath-scale-x: .998;
+  --micro-breath-scale-y: 1.007;
+  --micro-breath-lift: -.7px;
 }
 
 .pet-ground-shadow {
@@ -179,6 +185,33 @@ body {
   100% { transform: translate(0, 0) rotate(0deg) scale(1, 1); }
 }
 
+.pet-rig-vital,
+.pet-rig-micro-response {
+  transform-origin: center 78%;
+  will-change: transform;
+}
+
+.pet-rig[data-micro-active="true"] .pet-rig-vital {
+  animation: micro-breathe var(--micro-breath-ms) ease-in-out infinite;
+}
+
+.pet-rig[data-micro-cue="soft-lean"] .pet-rig-micro-response {
+  animation: micro-soft-lean 920ms ease-in-out both;
+}
+
+@keyframes micro-breathe {
+  0%, 100% { transform: translateY(0) scale(1, 1); }
+  50% {
+    transform:
+      translateY(var(--micro-breath-lift))
+      scale(var(--micro-breath-scale-x), var(--micro-breath-scale-y));
+  }
+}
+@keyframes micro-soft-lean {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  46% { transform: translate(1px, -.45px) rotate(.7deg); }
+}
+
 .pet-rig-follow-pose {
   transform-origin: 120px 120px;
   transform:
@@ -229,6 +262,51 @@ body {
 
 .pet-eye-glint-left { left: 66px; }
 .pet-eye-glint-right { left: 166px; }
+
+.pet-micro-ear,
+.pet-micro-nose {
+  position: absolute;
+  z-index: 4;
+  pointer-events: none;
+  opacity: 0;
+}
+
+.pet-micro-ear {
+  top: 27px;
+  width: 14px;
+  height: 8px;
+  border-top: 2px solid rgba(218, 91, 139, .84);
+  border-radius: 50%;
+}
+.pet-micro-ear-left { left: 51px; rotate: -24deg; }
+.pet-micro-ear-right { right: 42px; rotate: 24deg; }
+.pet-rig[data-micro-cue="ear-left"] .pet-micro-ear-left,
+.pet-rig[data-micro-cue="ear-right"] .pet-micro-ear-right {
+  animation: micro-ear-accent 620ms ease-out both;
+}
+
+.pet-micro-nose {
+  left: 115px;
+  top: 165px;
+  width: 10px;
+  height: 6px;
+  border: 1px solid rgba(255, 210, 74, .7);
+  border-radius: 50%;
+}
+.pet-rig[data-micro-cue="nose-wiggle"] .pet-micro-nose {
+  animation: micro-nose-wiggle 540ms ease-out both;
+}
+
+@keyframes micro-ear-accent {
+  0%, 100% { opacity: 0; scale: .7; translate: 0 1px; }
+  24% { opacity: .78; scale: 1.04; translate: 0 -1px; }
+  54% { opacity: .78; scale: 1.1; translate: 0 -1.5px; }
+}
+@keyframes micro-nose-wiggle {
+  0%, 100% { opacity: 0; scale: .7; translate: 0 0; }
+  24% { opacity: .76; scale: 1.08; translate: -1px 0; }
+  56% { opacity: .68; scale: .96; translate: 1px 0; }
+}
 
 .pet-bow-sheen {
   position: absolute;
@@ -510,6 +588,8 @@ body {
   .pet-rig *,
   .pet-rig-gaze,
   .pet-rig-drag-response,
+  .pet-rig-vital,
+  .pet-rig-micro-response,
   .pet-rig-emotion {
     animation: none !important;
     transition: none !important;
