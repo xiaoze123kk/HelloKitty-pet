@@ -6,7 +6,12 @@ import type {
   Motion,
   TriggerContext,
 } from "./types";
-import { PROFILE, renderTemplate, specialDateForToday } from "./profile";
+import {
+  PROFILE,
+  renderTemplate,
+  specialDateForToday,
+} from "./profile";
+import type { ProfileData } from "./types";
 import type { RelationshipContext } from "../relationship/relationshipEngine";
 
 export interface DialogueState {
@@ -170,17 +175,26 @@ export class DialogueEngine {
   constructor(
     entries: DialogueEntry[],
     private state: DialogueState,
+    private profile: ProfileData = PROFILE,
   ) {
     this.entries = entries;
   }
 
-  static fromBundle(state: DialogueState): DialogueEngine {
+  static fromBundle(
+    state: DialogueState,
+    profile: ProfileData = PROFILE,
+  ): DialogueEngine {
     const entries = sanitizeEntries(dialogueJson);
     const configuredIds = new Set(entries.map((entry) => entry.id));
     return new DialogueEngine(
       [...entries, ...RELATIONSHIP_ENTRIES.filter((entry) => !configuredIds.has(entry.id))],
       state,
+      profile,
     );
+  }
+
+  setProfile(profile: ProfileData): void {
+    this.profile = profile;
   }
 
   reset(): void {
@@ -189,7 +203,7 @@ export class DialogueEngine {
 
   /** 今天命中的纪念日上下文 */
   specialDateContext(now: Date): TriggerContext | null {
-    const hit = specialDateForToday(now);
+    const hit = specialDateForToday(now, this.profile);
     return hit
       ? { type: "specialDate", specialDateId: hit.id, label: hit.label }
       : null;
@@ -257,14 +271,14 @@ export class DialogueEngine {
         installedAt,
         specialDateLabel,
         ...relationship,
-      }),
+      }, this.profile),
       followUpText: chosen.followUpText
         ? renderTemplate(chosen.followUpText, {
             now,
             installedAt,
             specialDateLabel,
             ...relationship,
-          })
+          }, this.profile)
         : undefined,
       emotion: chosen.emotion,
       motion: chosen.motion,

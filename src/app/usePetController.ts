@@ -10,6 +10,7 @@ import {
 } from "@tauri-apps/plugin-autostart";
 import { createActor, type Actor, type SnapshotFrom } from "xstate";
 import { DialogueEngine } from "../dialogue/dialogueEngine";
+import { normalizeProfile } from "../dialogue/profile";
 import { BehaviorScheduler } from "../behavior/behaviorScheduler";
 import {
   advanceNeeds,
@@ -39,7 +40,11 @@ import {
   computeStreak,
   dateKey,
 } from "../dialogue/triggers";
-import type { DialogueDisplay, TriggerContext } from "../dialogue/types";
+import type {
+  DialogueDisplay,
+  ProfileData,
+  TriggerContext,
+} from "../dialogue/types";
 import {
   isAccessoryUnlocked,
   normalizeAccessoryId,
@@ -97,9 +102,11 @@ import {
 import {
   DEFAULT_ANIMATIONS,
   DEFAULT_REMINDERS,
+  DEFAULT_PREFERENCES,
   loadPreferences,
   savePreferences,
   type AnimationPreferences,
+  type IdentityPreferences,
   type PetPreferences,
   type PrefStore,
   type ReminderKind,
@@ -362,6 +369,9 @@ export interface PetController {
   behaviorGazeOverride: boolean | null;
   followUp: boolean;
   settingsOpen: boolean;
+  /** 首次启动设置是否仍待完成。 */
+  identitySetup: boolean;
+  identity: IdentityPreferences;
   dnd: boolean;
   alwaysOnTop: boolean;
   autostart: boolean;
@@ -392,6 +402,8 @@ export interface PetController {
   fatal: string | null;
   openSettings: () => void;
   closeSettings: () => void;
+  saveIdentity: (profile: ProfileData) => void;
+  skipIdentitySetup: () => void;
   onPetClick: (interaction: PetTouchInteraction) => void;
   onPetDragStart: () => void;
   onPetDragMotion: (motion: DragMotion) => void;
@@ -399,6 +411,8 @@ export interface PetController {
   onAnimationFinished: () => void;
   onHoldStart: () => void;
   onHoldEnd: () => void;
+  onPointerNear: () => void;
+  onPointerLeave: () => void;
   /** 设置面板：直接指定缩放比例 */
   onScaleChange: (value: number) => void;
   /** 桌宠上 Ctrl+滚轮：按 deltaY 方向步进缩放 */
@@ -443,6 +457,10 @@ export function usePetController(): PetController {
   const [behaviorGazeOverride, setBehaviorGazeOverride] = useState<boolean | null>(null);
   const [followUp, setFollowUp] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [identitySetup, setIdentitySetup] = useState(false);
+  const [identity, setIdentity] = useState<IdentityPreferences>(
+    DEFAULT_PREFERENCES.identity,
+  );
   const [dnd, setDnd] = useState(false);
   const [alwaysOnTop, setAlwaysOnTop] = useState(true);
   const [scale, setScale] = useState(DEFAULT_SCALE);
@@ -475,7 +493,9 @@ export function usePetController(): PetController {
     animations: DEFAULT_ANIMATIONS,
     reminders: DEFAULT_REMINDERS,
     wardrobe: { selectedAccessoryId: null },
+    identity: DEFAULT_PREFERENCES.identity,
   });
+  const identityRef = useRef<IdentityPreferences>(DEFAULT_PREFERENCES.identity);
   const scaleRef = useRef(DEFAULT_SCALE);
   /** 串行化窗口缩放：滚轮/滑杆可能连续触发，避免 setSize 乱序 */
   const scaleChainRef = useRef<Promise<void>>(Promise.resolve());
@@ -1222,6 +1242,8 @@ export function usePetController(): PetController {
 
       prefsStoreRef.current = prefsLoaded.store;
       prefsRef.current = prefsLoaded.prefs;
+      identityRef.current = prefsLoaded.prefs.identity;
+      setIdentity(prefsLoaded.prefs.identity);
       dndRef.current = prefsLoaded.prefs.dnd;
       setDnd(prefsLoaded.prefs.dnd);
       setAlwaysOnTop(prefsLoaded.prefs.alwaysOnTop);
@@ -1282,7 +1304,15 @@ export function usePetController(): PetController {
       progressStoreRef.current = progressLoaded.store;
       progressRef.current = progress;
       installedAtRef.current = new Date(progress.firstLaunchAt);
-      engineRef.current = DialogueEngine.fromBundle(progress.dialogue);
+      engineRef.current = DialogueEngine.fromBundle(
+        progress.dialogue,
+        prefsLoaded.prefs.identity.profile,
+      );
+      if (!prefsLoaded.prefs.identity.setupCompleted) {
+        settingsOpenRef.current = true;
+        setSettingsOpen(true);
+        setIdentitySetup(true);
+      }
       await saveProgress(progressLoaded.store, progress);
       emitNestSnapshotRef.current(progress);
 
@@ -1570,6 +1600,38 @@ export function usePetController(): PetController {
         behaviorNeedsAtRef.current = now;
         progress.behavior.needs = behaviorNeedsRef.current;
         progress.behavior.updatedAt = now;
+
+        const stateKey = stateValueRef.current;
+        const canShowNightCompanion =
+          context.timeBand === "lateNight" &&
+          context.idleActionsEnabled &&
+          !context.dnd &&
+          !context.settingsOpen &&
+          !context.dialogueOpen &&
+          stateKey === "idle" &&
+          idleSubStateRef.current === "still" &&
+          behaviorNeedsRef.current.sleepiness < 0.76;
+        if (canShowNightCompanion) {
+          cancelBehaviorPlanRef.current();
+          actor.send({ type: "BEGIN_NIGHT_COMPANION" });
+          return;
+        }
+        if (
+          stateKey === "nightCompanion" &&
+          context.timeBand !== "lateNight"
+        ) {
+          actor.send({ type: "END_NIGHT_COMPANION" });
+          return;
+        }
+        if (
+          stateKey === "nightCompanion" &&
+          behaviorNeedsRef.current.sleepiness >= 0.76 &&
+          context.sleepTransitionsEnabled
+        ) {
+          actor.send({ type: "BEGIN_SLEEP" });
+          return;
+        }
+
         const step = behaviorSchedulerRef.current.tick({
           needs: behaviorNeedsRef.current,
           context,
@@ -1998,6 +2060,16 @@ export function usePetController(): PetController {
     setHearts(false);
   }, [actor]);
 
+  const onPointerNear = useCallback(() => {
+    cancelBehaviorPlanRef.current();
+    actor.send({ type: "POINTER_NEAR" });
+  }, [actor]);
+
+  const onPointerLeave = useCallback(() => {
+    cancelBehaviorPlanRef.current();
+    actor.send({ type: "POINTER_LEAVE" });
+  }, [actor]);
+
   const openSettings = useCallback(() => {
     cancelBehaviorPlanRef.current();
     settingsOpenRef.current = true;
@@ -2008,6 +2080,43 @@ export function usePetController(): PetController {
     settingsOpenRef.current = false;
     setSettingsOpen(false);
   }, []);
+
+  const persistIdentity = useCallback(
+    async (profile: ProfileData, setupCompleted: boolean) => {
+      const next: IdentityPreferences = {
+        profile: normalizeProfile(profile, identityRef.current.profile.specialDates),
+        setupCompleted,
+      };
+      identityRef.current = next;
+      prefsRef.current.identity = next;
+      setIdentity(next);
+      setIdentitySetup(!setupCompleted);
+      engineRef.current?.setProfile(next.profile);
+      if (prefsStoreRef.current) {
+        await savePreferences(prefsStoreRef.current, prefsRef.current);
+      }
+      if (setupCompleted) {
+        settingsOpenRef.current = false;
+        setSettingsOpen(false);
+      }
+    },
+    [],
+  );
+
+  const saveIdentity = useCallback(
+    (profile: ProfileData) => {
+      void persistIdentity(profile, true).catch((error) => {
+        console.error("save identity failed:", error);
+      });
+    },
+    [persistIdentity],
+  );
+
+  const skipIdentitySetup = useCallback(() => {
+    void persistIdentity(identityRef.current.profile, true).catch((error) => {
+      console.error("skip identity setup failed:", error);
+    });
+  }, [persistIdentity]);
 
   const openNest = useCallback(() => {
     void invoke("open_nest")
@@ -2107,7 +2216,6 @@ export function usePetController(): PetController {
       interactionContextRef.current = emptyInteractionContext();
       clearBehaviorExpressionRef.current();
       const entries = engineRef.current?.entries ?? [];
-      engineRef.current = new DialogueEngine(entries, fresh.dialogue);
       installedAtRef.current = new Date(now);
 
       prefsRef.current = {
@@ -2118,7 +2226,15 @@ export function usePetController(): PetController {
         animations: keep.animations,
         reminders: keep.reminders,
         wardrobe: { selectedAccessoryId: null },
+        identity: keep.identity,
       };
+      identityRef.current = keep.identity;
+      setIdentity(keep.identity);
+      engineRef.current = new DialogueEngine(
+        entries,
+        fresh.dialogue,
+        keep.identity.profile,
+      );
       setSelectedAccessoryId(null);
       if (progressStore) await saveProgress(progressStore, fresh);
       if (prefsStore) await savePreferences(prefsStore, prefsRef.current);
@@ -2147,6 +2263,8 @@ export function usePetController(): PetController {
     behaviorGazeOverride,
     followUp,
     settingsOpen,
+    identitySetup,
+    identity,
     dnd,
     alwaysOnTop,
     autostart,
@@ -2165,6 +2283,8 @@ export function usePetController(): PetController {
     fatal,
     openSettings,
     closeSettings,
+    saveIdentity,
+    skipIdentitySetup,
     onPetClick,
     onPetDragStart,
     onPetDragMotion,
@@ -2172,6 +2292,8 @@ export function usePetController(): PetController {
     onAnimationFinished,
     onHoldStart,
     onHoldEnd,
+    onPointerNear,
+    onPointerLeave,
     onScaleChange,
     onWheelZoom,
     toggleAlwaysOnTop,

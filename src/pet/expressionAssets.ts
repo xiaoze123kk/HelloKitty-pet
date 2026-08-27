@@ -4,13 +4,17 @@ export type ExpressionAsset =
   | "surprised"
   | "curious"
   | "blush"
-  | "sleepy_soft";
+  | "sleepy_soft"
+  | "proud_happy"
+  | "annoyed";
 
 export const EXPRESSION_ASSET_URLS: Record<ExpressionAsset, string> = {
   surprised: "/assets/pet/expressions/surprised.png",
   curious: "/assets/pet/expressions/curious.png",
   blush: "/assets/pet/expressions/blush.png",
   sleepy_soft: "/assets/pet/expressions/sleepy_soft.png",
+  proud_happy: "/assets/pet/expressions/proud_happy.png",
+  annoyed: "/assets/pet/expressions/annoyed.png",
 };
 
 const MOTION_EXPRESSIONS: Partial<Record<PetVisualMotion, ExpressionAsset>> = {
@@ -22,8 +26,13 @@ const MOTION_EXPRESSIONS: Partial<Record<PetVisualMotion, ExpressionAsset>> = {
   headpat: "blush",
   cheekTouch: "blush",
   petted: "blush",
+  happy: "proud_happy",
+  angry: "annoyed",
+  annoyed: "annoyed",
   sleepy: "sleepy_soft",
   moonGreeting: "sleepy_soft",
+  nightCompanion: "sleepy_soft",
+  curiousWink: "curious",
 };
 
 /**

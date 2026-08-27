@@ -15,6 +15,7 @@ const SLEEP_MOTIONS = new Set<PetVisualMotion>([
   "fallAsleep",
   "yawn",
   "moonGreeting",
+  "nightCompanion",
 ]);
 
 export function accessoryReactionFor(

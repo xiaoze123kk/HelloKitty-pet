@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import {
   formatScale,
   MAX_SCALE,
@@ -7,12 +8,17 @@ import {
 } from "../pet/zoom";
 import type {
   AnimationPreferences,
+  IdentityPreferences,
   ReminderKind,
   ReminderPreferences,
 } from "../storage/preferences";
+import type { ProfileData } from "../dialogue/types";
+import { APP_VERSION } from "../app/appVersion";
 
 interface SettingsPanelProps {
   open: boolean;
+  identitySetup: boolean;
+  identity: IdentityPreferences;
   alwaysOnTop: boolean;
   dnd: boolean;
   autostart: boolean;
@@ -21,6 +27,8 @@ interface SettingsPanelProps {
   animations: AnimationPreferences;
   reminders: ReminderPreferences;
   onClose: () => void;
+  onSaveIdentity: (profile: ProfileData) => void;
+  onSkipIdentitySetup: () => void;
   onToggleAlwaysOnTop: (value: boolean) => void;
   onToggleDnd: (value: boolean) => void;
   onToggleAutostart: (value: boolean) => void;
@@ -40,6 +48,8 @@ interface SettingsPanelProps {
 
 export function SettingsPanel({
   open,
+  identitySetup,
+  identity,
   alwaysOnTop,
   dnd,
   autostart,
@@ -48,6 +58,8 @@ export function SettingsPanel({
   animations,
   reminders,
   onClose,
+  onSaveIdentity,
+  onSkipIdentitySetup,
   onToggleAlwaysOnTop,
   onToggleDnd,
   onToggleAutostart,
@@ -57,16 +69,138 @@ export function SettingsPanel({
   onClearData,
   onOpenNest,
 }: SettingsPanelProps) {
+  const firstMeet = identity.profile.specialDates.find(
+    (item) => item.id === "first_meet",
+  );
+  const birthday = identity.profile.specialDates.find(
+    (item) => item.id === "birthday",
+  );
+
+  const [nickname, setNickname] = useState(identity.profile.nickname);
+  const [yourNickname, setYourNickname] = useState(identity.profile.yourNickname);
+  const [firstMeetMonth, setFirstMeetMonth] = useState(
+    firstMeet ? String(firstMeet.month) : "",
+  );
+  const [firstMeetDay, setFirstMeetDay] = useState(
+    firstMeet ? String(firstMeet.day) : "",
+  );
+  const [birthdayMonth, setBirthdayMonth] = useState(
+    birthday ? String(birthday.month) : "",
+  );
+  const [birthdayDay, setBirthdayDay] = useState(
+    birthday ? String(birthday.day) : "",
+  );
+
+  useEffect(() => {
+    setNickname(identity.profile.nickname);
+    setYourNickname(identity.profile.yourNickname);
+    setFirstMeetMonth(firstMeet ? String(firstMeet.month) : "");
+    setFirstMeetDay(firstMeet ? String(firstMeet.day) : "");
+    setBirthdayMonth(birthday ? String(birthday.month) : "");
+    setBirthdayDay(birthday ? String(birthday.day) : "");
+  }, [birthday, firstMeet, identity]);
+
+  const saveIdentity = () => {
+    const specialDates = identity.profile.specialDates.filter(
+      (item) => item.id !== "first_meet" && item.id !== "birthday",
+    );
+    if (firstMeetMonth && firstMeetDay) {
+      specialDates.push({
+        id: "first_meet",
+        month: Number(firstMeetMonth),
+        day: Number(firstMeetDay),
+        label: "第一次见面的日子",
+      });
+    }
+    if (birthdayMonth && birthdayDay) {
+      specialDates.push({
+        id: "birthday",
+        month: Number(birthdayMonth),
+        day: Number(birthdayDay),
+        label: "你的生日",
+      });
+    }
+    onSaveIdentity({ nickname, yourNickname, specialDates });
+  };
+
+  const identitySection = (
+    <>
+      <div className="settings-section-title">
+        {identitySetup ? "先认识一下" : "相处资料"}
+      </div>
+      {identitySetup && (
+        <div className="settings-intro">
+          告诉 Kitty 该怎么称呼你。资料只保存在这台电脑上，之后也可以在设置里修改。
+        </div>
+      )}
+      <label className="settings-field">
+        <span>Kitty 对你的称呼</span>
+        <input
+          className="settings-input"
+          value={nickname}
+          maxLength={24}
+          placeholder="例如：小ze"
+          onChange={(event) => setNickname(event.target.value)}
+        />
+      </label>
+      <label className="settings-field">
+        <span>你对 Kitty 的称呼</span>
+        <input
+          className="settings-input"
+          value={yourNickname}
+          maxLength={24}
+          placeholder="例如：Kitty"
+          onChange={(event) => setYourNickname(event.target.value)}
+        />
+      </label>
+      <div className="settings-date-card">
+        <strong>纪念日</strong>
+        <small>只记录月和日，不读取其他个人信息</small>
+        <DateSelectors
+          label="第一次见面"
+          month={firstMeetMonth}
+          day={firstMeetDay}
+          onMonthChange={setFirstMeetMonth}
+          onDayChange={setFirstMeetDay}
+        />
+        <DateSelectors
+          label="生日（可选）"
+          month={birthdayMonth}
+          day={birthdayDay}
+          onMonthChange={setBirthdayMonth}
+          onDayChange={setBirthdayDay}
+          optional
+        />
+      </div>
+      <div className="settings-identity-actions">
+        <button className="settings-primary" onClick={saveIdentity}>
+          {identitySetup ? "保存并开始相处" : "保存相处资料"}
+        </button>
+        {identitySetup && (
+          <button className="settings-secondary" onClick={onSkipIdentitySetup}>
+            先用默认设置
+          </button>
+        )}
+      </div>
+    </>
+  );
+
   if (!open) return null;
 
   return (
     <div className="settings-panel">
       <div className="settings-header">
         <span>设置</span>
-        <button className="settings-close" onClick={onClose} aria-label="关闭设置">
+        <button
+          className="settings-close"
+          onClick={identitySetup ? onSkipIdentitySetup : onClose}
+          aria-label={identitySetup ? "先用默认设置" : "关闭设置"}
+        >
           ✕
         </button>
       </div>
+
+      {identitySection}
 
       <label className="settings-row">
         <span>
@@ -374,7 +508,69 @@ export function SettingsPanel({
       </button>
 
       <div className="settings-footer">
-        KittyPet v0.5.0 · 完全离线运行，不上传任何数据
+        KittyPet v{APP_VERSION} · 完全离线运行，不上传任何数据
+      </div>
+    </div>
+  );
+}
+
+function DateSelectors({
+  label,
+  month,
+  day,
+  onMonthChange,
+  onDayChange,
+  optional = false,
+}: {
+  label: string;
+  month: string;
+  day: string;
+  onMonthChange: (value: string) => void;
+  onDayChange: (value: string) => void;
+  optional?: boolean;
+}) {
+  return (
+    <div className="settings-date-row">
+      <span>{label}</span>
+      <div className="settings-date-controls">
+        <select
+          className="settings-select"
+          value={month}
+          aria-label={`${label}月份`}
+          onChange={(event) => onMonthChange(event.target.value)}
+        >
+          <option value="">月</option>
+          {Array.from({ length: 12 }, (_, index) => index + 1).map((value) => (
+            <option key={value} value={value}>
+              {value}月
+            </option>
+          ))}
+        </select>
+        <select
+          className="settings-select"
+          value={day}
+          aria-label={`${label}日期`}
+          onChange={(event) => onDayChange(event.target.value)}
+        >
+          <option value="">日</option>
+          {Array.from({ length: 31 }, (_, index) => index + 1).map((value) => (
+            <option key={value} value={value}>
+              {value}日
+            </option>
+          ))}
+        </select>
+        {optional && month && day && (
+          <button
+            className="settings-date-clear"
+            type="button"
+            onClick={() => {
+              onMonthChange("");
+              onDayChange("");
+            }}
+          >
+            清除
+          </button>
+        )}
       </div>
     </div>
   );

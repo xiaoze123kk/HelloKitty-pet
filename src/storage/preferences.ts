@@ -3,6 +3,8 @@ import {
   normalizeAccessoryId,
   type AccessoryId,
 } from "../growth/wardrobe";
+import { PROFILE, normalizeProfile } from "../dialogue/profile";
+import type { ProfileData } from "../dialogue/types";
 import { clampScale, DEFAULT_SCALE } from "../pet/zoom";
 
 export type PrefStore = Awaited<ReturnType<typeof load>>;
@@ -67,6 +69,13 @@ export interface WardrobePreferences {
   selectedAccessoryId: AccessoryId | null;
 }
 
+export interface IdentityPreferences {
+  /** Kitty 对用户的称呼、用户对 Kitty 的称呼和可选纪念日。 */
+  profile: ProfileData;
+  /** 首次启动设置是否已经完成或明确跳过。 */
+  setupCompleted: boolean;
+}
+
 export const DEFAULT_REMINDERS: ReminderPreferences = {
   water: { enabled: true, intervalMinutes: 60 },
   sedentary: { enabled: true, intervalMinutes: 90 },
@@ -91,6 +100,8 @@ export interface PetPreferences {
   reminders: ReminderPreferences;
   /** 当前穿戴；解锁资格由关系记录决定。 */
   wardrobe: WardrobePreferences;
+  /** 首次启动设置与本地称呼资料。 */
+  identity: IdentityPreferences;
 }
 
 export const DEFAULT_PREFERENCES: PetPreferences = {
@@ -101,7 +112,19 @@ export const DEFAULT_PREFERENCES: PetPreferences = {
   animations: DEFAULT_ANIMATIONS,
   reminders: DEFAULT_REMINDERS,
   wardrobe: { selectedAccessoryId: null },
+  identity: {
+    profile: cloneProfile(PROFILE),
+    setupCompleted: false,
+  },
 };
+
+function cloneProfile(profile: ProfileData): ProfileData {
+  return {
+    nickname: profile.nickname,
+    yourNickname: profile.yourNickname,
+    specialDates: profile.specialDates.map((item) => ({ ...item })),
+  };
+}
 
 function normalizeAnimations(
   raw: Partial<AnimationPreferences> | undefined,
@@ -152,6 +175,15 @@ function normalizeReminders(
   };
 }
 
+function normalizeIdentity(
+  raw: Partial<IdentityPreferences> | undefined,
+): IdentityPreferences {
+  return {
+    profile: normalizeProfile(raw?.profile, PROFILE.specialDates),
+    setupCompleted: raw?.setupCompleted === true,
+  };
+}
+
 export async function loadPreferences(): Promise<{
   store: PrefStore;
   prefs: PetPreferences;
@@ -175,6 +207,7 @@ export async function loadPreferences(): Promise<{
         raw?.wardrobe?.selectedAccessoryId,
       ),
     },
+    identity: normalizeIdentity(raw?.identity),
   };
   return { store, prefs };
 }

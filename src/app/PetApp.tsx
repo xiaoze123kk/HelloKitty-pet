@@ -99,6 +99,8 @@ export function PetApp() {
         onWheelZoom={controller.onWheelZoom}
         onHoldStart={controller.onHoldStart}
         onHoldEnd={controller.onHoldEnd}
+        onPointerNear={controller.onPointerNear}
+        onPointerLeave={controller.onPointerLeave}
       >
         <PetRig
           motion={controller.motion}
@@ -122,6 +124,8 @@ export function PetApp() {
 
       <SettingsPanel
         open={controller.settingsOpen}
+        identitySetup={controller.identitySetup}
+        identity={controller.identity}
         alwaysOnTop={controller.alwaysOnTop}
         dnd={controller.dnd}
         autostart={controller.autostart}
@@ -129,6 +133,8 @@ export function PetApp() {
         scale={controller.scale}
         animations={controller.animationPrefs}
         reminders={controller.reminderPrefs}
+        onSaveIdentity={controller.saveIdentity}
+        onSkipIdentitySetup={controller.skipIdentitySetup}
         onScaleChange={controller.onScaleChange}
         onClose={controller.closeSettings}
         onToggleAlwaysOnTop={controller.toggleAlwaysOnTop}

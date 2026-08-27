@@ -27,8 +27,13 @@ const expected = {
   headpat: "blush",
   cheekTouch: "blush",
   petted: "blush",
+  happy: "proud_happy",
+  angry: "annoyed",
+  annoyed: "annoyed",
   sleepy: "sleepy_soft",
   moonGreeting: "sleepy_soft",
+  curiousWink: "curious",
+  nightCompanion: "sleepy_soft",
 };
 
 for (const [motion, expression] of Object.entries(expected)) {
@@ -38,7 +43,7 @@ for (const [motion, expression] of Object.entries(expected)) {
     `/assets/pet/expressions/${expression}.png`,
   );
 }
-for (const motion of ["idle", "sleep", "angry", "whiskerTouch", "celebrate"]) {
+for (const motion of ["idle", "sleep", "whiskerTouch", "celebrate"]) {
   assert.equal(expressions.expressionAssetForMotion(motion), null);
 }
 

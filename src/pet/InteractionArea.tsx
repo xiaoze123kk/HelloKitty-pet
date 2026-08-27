@@ -35,6 +35,9 @@ interface InteractionAreaProps {
   onHoldStart?: () => void;
   /** 撸猫松手 / 被拖拽打断：结束撸猫 */
   onHoldEnd?: () => void;
+  /** 光标进入 / 离开宠物热区，用于低频 curious 反馈 */
+  onPointerNear?: () => void;
+  onPointerLeave?: () => void;
 }
 
 const DRAG_THRESHOLD_PX = 6;
@@ -66,6 +69,8 @@ export function InteractionArea({
   onWheelZoom,
   onHoldStart,
   onHoldEnd,
+  onPointerNear,
+  onPointerLeave,
 }: InteractionAreaProps) {
   const areaRef = useRef<HTMLDivElement | null>(null);
   const downRef = useRef<{ x: number; y: number; time: number } | null>(null);
@@ -89,6 +94,8 @@ export function InteractionArea({
   const onWheelZoomRef = useRef(onWheelZoom);
   const onHoldStartRef = useRef(onHoldStart);
   const onHoldEndRef = useRef(onHoldEnd);
+  const onPointerNearRef = useRef(onPointerNear);
+  const onPointerLeaveRef = useRef(onPointerLeave);
   const disabledRef = useRef(disabled);
   onClickRef.current = onClick;
   onDragStartRef.current = onDragStart;
@@ -97,6 +104,8 @@ export function InteractionArea({
   onWheelZoomRef.current = onWheelZoom;
   onHoldStartRef.current = onHoldStart;
   onHoldEndRef.current = onHoldEnd;
+  onPointerNearRef.current = onPointerNear;
+  onPointerLeaveRef.current = onPointerLeave;
   disabledRef.current = disabled;
 
   useEffect(() => {
@@ -363,6 +372,12 @@ export function InteractionArea({
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerCancel}
+      onPointerEnter={() => {
+        if (!disabledRef.current) onPointerNearRef.current?.();
+      }}
+      onPointerLeave={() => {
+        if (!disabledRef.current) onPointerLeaveRef.current?.();
+      }}
       onContextMenu={handleContextMenu}
     >
       {children}

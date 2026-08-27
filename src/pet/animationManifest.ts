@@ -55,6 +55,7 @@ export type PetVisualMotion =
   | "shake"
   | "spin"
   | "angry"
+  | "annoyed"
   | "fallAsleep"
   | "wake"
   | "landing"
@@ -81,7 +82,10 @@ export type PetVisualMotion =
   | "noseBoop"
   | "whiskerTouch"
   | "faceTouch"
-  | "accessoryTouch";
+  | "accessoryTouch"
+  | "curiousWink"
+  | "nightCompanion"
+  | "pettedEnjoy";
 
 export const petMotions: Record<PetVisualMotion, MotionConfig> = {
   idle: motions.idle,
@@ -100,6 +104,7 @@ export const petMotions: Record<PetVisualMotion, MotionConfig> = {
   shake: sheetConfig("/assets/pet/shake.png", "shake"),
   spin: sheetConfig("/assets/pet/spin.png", "spin"),
   angry: sheetConfig("/assets/pet/angry.png", "angry"),
+  annoyed: sheetConfig("/assets/pet/angry.png", "annoyed"),
   fallAsleep: sheetConfig("/assets/pet/fallAsleep.png", "fallAsleep"),
   wake: sheetConfig("/assets/pet/wake.png", "wake"),
   landing: sheetConfig("/assets/pet/landing.png", "landing"),
@@ -127,4 +132,7 @@ export const petMotions: Record<PetVisualMotion, MotionConfig> = {
   whiskerTouch: sheetConfig("/assets/pet/shake.png", "whiskerTouch"),
   faceTouch: sheetConfig("/assets/pet/clicked.png", "faceTouch"),
   accessoryTouch: sheetConfig("/assets/pet/bow.png", "accessoryTouch"),
+  curiousWink: sheetConfig("/assets/pet/look.png", "curiousWink"),
+  nightCompanion: sheetConfig("/assets/pet/sleepy.png", "nightCompanion"),
+  pettedEnjoy: sheetConfig("/assets/pet/happy.png", "pettedEnjoy"),
 };

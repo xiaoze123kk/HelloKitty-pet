@@ -6,6 +6,10 @@ import type {
 } from "../relationship/reactionEngine";
 import type { PetVisualMotion } from "./animationManifest";
 import type { PetFramePoint, PetTouchTarget } from "./touchZones";
+import {
+  noseResponseFor,
+  recordNoseTouch,
+} from "./featureTriggers";
 
 export interface AnimationFlags {
   idleActions: boolean;
@@ -21,6 +25,8 @@ export interface AnimationFlags {
 export interface PetContext {
   /** 当前连击手势内的点击时间戳（ms）；间隔超 650ms 自动清零 */
   clickTimes: number[];
+  /** 最近几次连续鼻子触碰，用于 surprised → annoyed → sneeze。 */
+  noseTouchTimes: number[];
   currentDialogue: DialogueDisplay | null;
   /** 趣味动画开关（设置面板 → SET_ANIMATION_PREFS 同步进来） */
   animations: AnimationFlags;
@@ -70,6 +76,10 @@ export type PetEvent =
   | { type: "TEASE" }
   | { type: "POUNCE" }
   | { type: "EDGE_PEEK" }
+  | { type: "POINTER_NEAR" }
+  | { type: "POINTER_LEAVE" }
+  | { type: "BEGIN_NIGHT_COMPANION" }
+  | { type: "END_NIGHT_COMPANION" }
   | { type: "PLAY_RITUAL"; ritual: CompanionRitualKind }
   | { type: "SET_ANIMATION_PREFS"; animations: AnimationFlags };
 
@@ -118,6 +128,15 @@ export const petMachine = setup({
         return [...burst, event.at];
       },
     }),
+    recordNoseTouch: assign({
+      noseTouchTimes: ({ context, event }) =>
+        event.type === "CLICK" && event.target?.id === "nose"
+          ? recordNoseTouch(context.noseTouchTimes, event.at)
+          : event.type === "CLICK"
+            ? []
+            : context.noseTouchTimes,
+    }),
+    resetNoseChain: assign({ noseTouchTimes: () => [] }),
     setDialogue: assign({
       currentDialogue: ({ event }) =>
         event.type === "SHOW_DIALOGUE" ? event.dialogue : null,
@@ -166,6 +185,14 @@ export const petMachine = setup({
       event.type === "CLICK" && event.target?.id === "forehead",
     isNoseTouch: ({ event }) =>
       event.type === "CLICK" && event.target?.id === "nose",
+    isNoseAnnoyed: ({ context, event }) =>
+      event.type === "CLICK" &&
+      event.target?.id === "nose" &&
+      noseResponseFor(context.noseTouchTimes, event.at) === "annoyed",
+    isNoseSneeze: ({ context, event }) =>
+      event.type === "CLICK" &&
+      event.target?.id === "nose" &&
+      noseResponseFor(context.noseTouchTimes, event.at) === "sneeze",
     isAccessoryTouch: ({ event }) =>
       event.type === "CLICK" && event.target?.id === "accessory",
     isLowerFaceTouch: ({ event }) =>
@@ -208,6 +235,7 @@ export const petMachine = setup({
   initial: "idle",
   context: {
     clickTimes: [],
+    noseTouchTimes: [],
     currentDialogue: null,
     animations: {
       idleActions: true,
@@ -228,68 +256,78 @@ export const petMachine = setup({
   on: {
     CLICK: [
       {
-        guard: "isCrazyClick",
-        target: "#pet.angry",
-        actions: ["recordClick", "setTouchInteraction"],
+        guard: "isNoseSneeze",
+        target: "#pet.noseSneeze",
+        actions: ["recordClick", "recordNoseTouch", "setTouchInteraction"],
       },
       {
-        guard: "isRapidClick",
-        target: "#pet.shy",
-        actions: ["recordClick", "setTouchInteraction"],
-      },
-      {
-        guard: "isDoubleClick",
-        target: "#pet.happy",
-        actions: ["recordClick", "setTouchInteraction"],
-      },
-      {
-        guard: "isForeheadTouch",
-        target: "#pet.headpat",
-        actions: ["recordClick", "setTouchInteraction", "setHeadpatReaction"],
-      },
-      {
-        guard: "isEarTouch",
-        target: "#pet.earTouch",
-        actions: ["recordClick", "setTouchInteraction"],
-      },
-      {
-        guard: "isCheekTouch",
-        target: "#pet.cheekTouch",
-        actions: ["recordClick", "setTouchInteraction"],
+        guard: "isNoseAnnoyed",
+        target: "#pet.noseAnnoyed",
+        actions: ["recordClick", "recordNoseTouch", "setTouchInteraction"],
       },
       {
         guard: "isNoseTouch",
         target: "#pet.noseTouch",
-        actions: ["recordClick", "setTouchInteraction"],
+        actions: ["recordClick", "recordNoseTouch", "setTouchInteraction"],
+      },
+      {
+        guard: "isCrazyClick",
+        target: "#pet.angry",
+        actions: ["recordClick", "recordNoseTouch", "setTouchInteraction"],
+      },
+      {
+        guard: "isRapidClick",
+        target: "#pet.shy",
+        actions: ["recordClick", "recordNoseTouch", "setTouchInteraction"],
+      },
+      {
+        guard: "isDoubleClick",
+        target: "#pet.happy",
+        actions: ["recordClick", "recordNoseTouch", "setTouchInteraction"],
+      },
+      {
+        guard: "isForeheadTouch",
+        target: "#pet.headpat",
+        actions: ["recordClick", "recordNoseTouch", "setTouchInteraction", "setHeadpatReaction"],
+      },
+      {
+        guard: "isEarTouch",
+        target: "#pet.earTouch",
+        actions: ["recordClick", "recordNoseTouch", "setTouchInteraction"],
+      },
+      {
+        guard: "isCheekTouch",
+        target: "#pet.cheekTouch",
+        actions: ["recordClick", "recordNoseTouch", "setTouchInteraction"],
       },
       {
         guard: "isWhiskerTouch",
         target: "#pet.whiskerTouch",
-        actions: ["recordClick", "setTouchInteraction"],
+        actions: ["recordClick", "recordNoseTouch", "setTouchInteraction"],
       },
       {
         guard: "isAccessoryTouch",
         target: "#pet.accessoryTouch",
-        actions: ["recordClick", "setTouchInteraction"],
+        actions: ["recordClick", "recordNoseTouch", "setTouchInteraction"],
       },
       {
         guard: "isLowerFaceTouch",
         target: "#pet.bodypat",
-        actions: ["recordClick", "setTouchInteraction"],
+        actions: ["recordClick", "recordNoseTouch", "setTouchInteraction"],
       },
       {
         guard: "isBowTouch",
         target: "#pet.bowtouch",
-        actions: ["recordClick", "setTouchInteraction"],
+        actions: ["recordClick", "recordNoseTouch", "setTouchInteraction"],
       },
       {
         guard: "isFaceTouch",
         target: "#pet.faceTouch",
-        actions: ["recordClick", "setTouchInteraction"],
+        actions: ["recordClick", "recordNoseTouch", "setTouchInteraction"],
       },
       {
         target: "#pet.clicked",
-        actions: ["recordClick", "setTouchInteraction"],
+        actions: ["recordClick", "recordNoseTouch", "setTouchInteraction"],
       },
     ],
     SHOW_DIALOGUE: [
@@ -368,10 +406,16 @@ export const petMachine = setup({
     EDGE_PEEK: {
       target: "#pet.edgePeek",
     },
+    BEGIN_NIGHT_COMPANION: {
+      target: "#pet.nightCompanion",
+    },
+    END_NIGHT_COMPANION: {
+      target: "#pet.idle",
+    },
     PLAY_RITUAL: [
       {
         guard: "isReunionRitual",
-        target: "#pet.ritualReunion",
+        target: "#pet.ritualReunionSurprise",
         actions: "setActiveRitual",
       },
       {
@@ -390,6 +434,12 @@ export const petMachine = setup({
     idle: {
       initial: "still",
       on: {
+        POINTER_NEAR: {
+          target: ".curiousWink",
+        },
+        POINTER_LEAVE: {
+          target: ".peek",
+        },
         IDLE_STRETCH: [
           {
             guard: "idleActionsOn",
@@ -477,6 +527,14 @@ export const petMachine = setup({
       },
       states: {
         still: {},
+        curiousWink: {
+          after: {
+            1_100: { target: "#pet.idle.still" },
+          },
+          on: {
+            ANIMATION_FINISHED: { target: "#pet.idle.still" },
+          },
+        },
         // 小动作是 idle 的子状态：切换时不会退出 idle，
         // 因此 45 秒困倦倒计时不会被小动作重置
         stretch: {
@@ -673,6 +731,28 @@ export const petMachine = setup({
         ANIMATION_FINISHED: { target: "idle" },
       },
     },
+    noseAnnoyed: {
+      after: {
+        1_500: { target: "idle" },
+      },
+      on: {
+        ANIMATION_FINISHED: { target: "idle" },
+      },
+    },
+    noseSneeze: {
+      after: {
+        [ACTION_FALLBACK_MS]: {
+          target: "idle",
+          actions: "resetNoseChain",
+        },
+      },
+      on: {
+        ANIMATION_FINISHED: {
+          target: "idle",
+          actions: "resetNoseChain",
+        },
+      },
+    },
     whiskerTouch: {
       after: {
         [ACTION_FALLBACK_MS]: { target: "idle" },
@@ -766,7 +846,13 @@ export const petMachine = setup({
         ANIMATION_FINISHED: { target: "idle" },
       },
     },
-    petted: {},
+    petted: {
+      // 先显示 blush；持续按住一会儿才进入闭眼享受，短按不会跳变。
+      after: {
+        1_200: { target: "pettedEnjoy" },
+      },
+    },
+    pettedEnjoy: {},
     walking: {},
     edgePeek: {
       after: {
@@ -777,6 +863,23 @@ export const petMachine = setup({
       },
     },
     ritualReunion: {
+      exit: "clearActiveRitual",
+      after: {
+        5_000: { target: "idle" },
+      },
+      on: {
+        ANIMATION_FINISHED: { target: "idle" },
+      },
+    },
+    ritualReunionSurprise: {
+      after: {
+        900: { target: "ritualReunionHappy" },
+      },
+      on: {
+        ANIMATION_FINISHED: { target: "ritualReunionHappy" },
+      },
+    },
+    ritualReunionHappy: {
       exit: "clearActiveRitual",
       after: {
         5_000: { target: "idle" },
@@ -801,6 +904,11 @@ export const petMachine = setup({
       },
       on: {
         ANIMATION_FINISHED: { target: "idle" },
+      },
+    },
+    nightCompanion: {
+      on: {
+        POINTER_NEAR: { target: "#pet.idle.curiousWink" },
       },
     },
   },
@@ -858,6 +966,8 @@ export function stateToMotion(stateValue: unknown): PetVisualMotion {
           return "dizzy";
         case "peek":
           return "peek";
+        case "curiousWink":
+          return "curiousWink";
         default:
           return "idle";
       }
@@ -884,6 +994,10 @@ export function stateToMotion(stateValue: unknown): PetVisualMotion {
       return "cheekTouch";
     case "noseTouch":
       return "noseBoop";
+    case "noseAnnoyed":
+      return "annoyed";
+    case "noseSneeze":
+      return "sneeze";
     case "whiskerTouch":
       return "whiskerTouch";
     case "faceTouch":
@@ -918,16 +1032,24 @@ export function stateToMotion(stateValue: unknown): PetVisualMotion {
       return "landing";
     case "petted":
       return "petted";
+    case "pettedEnjoy":
+      return "pettedEnjoy";
     case "walking":
       return "walk";
     case "edgePeek":
       return "edgePeek";
     case "ritualReunion":
       return "reunion";
+    case "ritualReunionSurprise":
+      return "startle";
+    case "ritualReunionHappy":
+      return "happy";
     case "ritualStreak":
       return "celebrate";
     case "ritualLateNight":
       return "moonGreeting";
+    case "nightCompanion":
+      return "nightCompanion";
     default:
       return "idle";
   }

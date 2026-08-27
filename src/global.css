@@ -77,9 +77,10 @@ body {
 .pet-rig-gaze,
 .pet-rig-drag-response,
 .pet-rig-vital,
-.pet-rig-micro-response,
-.pet-rig-expression-accent,
-.pet-rig-emotion {
+   .pet-rig-micro-response,
+   .pet-rig-expression-accent,
+   .pet-rig-emotion,
+   .pet-expression-wink {
   position: relative;
   width: 240px;
   height: 240px;
@@ -221,6 +222,15 @@ body {
   animation: expression-sleepy-drift 5.8s ease-in-out infinite;
 }
 
+.pet-rig[data-motion="annoyed"] .pet-rig-expression-accent,
+.pet-rig[data-motion="angry"] .pet-rig-expression-accent {
+  animation: expression-annoyed-frown 920ms ease-in-out infinite;
+}
+
+.pet-rig[data-motion="curiousWink"] .pet-rig-expression-accent {
+  animation: expression-curious-attend 820ms ease-in-out both;
+}
+
 @keyframes expression-surprised-pop {
   0% { transform: translateY(1px) scale(.992, .985); }
   42% { transform: translateY(-1px) scale(1.015, 1.012); }
@@ -243,6 +253,12 @@ body {
 @keyframes expression-sleepy-drift {
   0%, 100% { transform: translateY(0) rotate(0deg); }
   50% { transform: translateY(.55px) rotate(-.28deg); }
+}
+
+@keyframes expression-annoyed-frown {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  35% { transform: translateY(.4px) rotate(-.35deg); }
+  68% { transform: translateY(0) rotate(.35deg); }
 }
 
 @keyframes micro-breathe {
@@ -308,6 +324,34 @@ body {
 
 .pet-eye-glint-left { left: 66px; }
 .pet-eye-glint-right { left: 166px; }
+
+.pet-expression-wink {
+  position: absolute;
+  z-index: 5;
+  pointer-events: none;
+  left: 57px;
+  top: 145px;
+  width: 26px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, .98);
+  opacity: 0;
+}
+
+.pet-expression-wink::after {
+  content: "";
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  bottom: 1px;
+  height: 9px;
+  border-bottom: 3px solid #392c2e;
+  border-radius: 0 0 50% 50%;
+}
+
+.pet-rig[data-motion="curiousWink"] .pet-expression-wink-left {
+  animation: curious-wink 780ms ease-out both;
+}
 
 .pet-micro-ear,
 .pet-micro-nose {
@@ -1588,6 +1632,144 @@ body {
   font-size: 12px;
   font-weight: 700;
   color: #b06b84;
+}
+
+@keyframes curious-wink {
+  0%, 28% { opacity: 0; transform: scale(.92); }
+  42%, 62% { opacity: 1; transform: scale(1); }
+  82%, 100% { opacity: 0; transform: scale(.96); }
+}
+
+.settings-intro {
+  padding: 9px 11px;
+  border: 1px solid #f1d6e0;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #fff, #fff4f8);
+  color: #806a75;
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.settings-field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 9px;
+  padding: 8px 10px;
+  border: 1px solid #f0dbe5;
+  border-radius: 10px;
+  background: #fff;
+  color: #6d5963;
+  font-size: 11px;
+}
+
+.settings-input {
+  min-width: 0;
+  width: 112px;
+  box-sizing: border-box;
+  padding: 6px 8px;
+  border: 1px solid #e8cfdb;
+  border-radius: 8px;
+  outline: none;
+  background: #fff8fa;
+  color: #594650;
+  font: inherit;
+  text-align: right;
+}
+
+.settings-input:focus,
+.settings-select:focus {
+  border-color: #df91ad;
+  box-shadow: 0 0 0 2px rgba(232, 135, 168, .15);
+}
+
+.settings-date-card {
+  padding: 9px 10px;
+  border: 1px solid #f0dbe5;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.settings-date-card > strong,
+.settings-date-card > small {
+  display: block;
+}
+
+.settings-date-card > strong {
+  color: #4a3b45;
+  font-size: 12px;
+}
+
+.settings-date-card > small {
+  margin-top: 2px;
+  color: #9a8b93;
+  font-size: 10px;
+}
+
+.settings-date-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 8px;
+  color: #806b75;
+  font-size: 11px;
+}
+
+.settings-date-controls {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.settings-date-controls .settings-select {
+  padding: 5px 4px;
+  font-size: 11px;
+}
+
+.settings-date-clear {
+  padding: 3px 5px;
+  border: 0;
+  background: transparent;
+  color: #c06786;
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.settings-identity-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.settings-primary,
+.settings-secondary {
+  width: 100%;
+  padding: 9px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.settings-primary {
+  border: 1px solid #e9a2ba;
+  background: linear-gradient(135deg, #fff4f8, #ffe3ed);
+  color: #b94f75;
+}
+
+.settings-primary:hover {
+  background: #ffdbe8;
+}
+
+.settings-secondary {
+  border: 1px solid #f0dbe5;
+  background: transparent;
+  color: #9a7d89;
+}
+
+.settings-secondary:hover {
+  background: #fff5f8;
 }
 
 .settings-close {

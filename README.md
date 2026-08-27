@@ -60,6 +60,10 @@ v0.12.4 增加 Expression Director：相同高层意图会根据处境和近期�
 一次兼容的 micro cue、是否看向用户及极低概率的现有短句。所有 override 会在完成、超时或用户打断
 时清理；勿扰、设置、动画偏好和系统减少动态效果继续拥有最高优先级，VFX 与配饰反应保持原逻辑。
 
+v0.12.5 完成产品收口：首次启动可在设置里填写 Kitty 对你的称呼、你对 Kitty 的称呼和可选纪念日；
+资料会写入本机设置，后续对白和纪念日触发会立即使用新资料。设置与小窝统一显示当前版本，默认仍可
+跳过资料设置，保持完全离线运行。
+
 **技术栈**：Tauri 2 · React 19 · TypeScript · Vite 7 · XState 5 · Tauri Store / Autostart 插件
 
 > ⚠️ 合规约定：本仓库只包含桌宠引擎和"示例私人内容"。昵称、纪念日、私人对白和角色素材
@@ -159,9 +163,9 @@ src-tauri/
 
 ## 私人内容
 
-1. 编辑 `personalization/profile.json`（昵称 / 你的称呼）
-2. 编辑 `personalization/dates.json`（纪念日、生日）
-3. 编辑 `personalization/dialogue.json`（30–50 条对白；字段说明见 `personalization.example/README.md`）
+1. 第一次启动时在设置里填写昵称、称呼和纪念日；之后也可以右键 Kitty → 设置 → 相处资料修改
+2. 需要批量编辑或准备收礼版本时，可编辑 `personalization/profile.json`（昵称 / 你的称呼）
+3. 编辑 `personalization/dates.json`（纪念日、生日）和 `personalization/dialogue.json`（30–50 条对白；字段说明见 `personalization.example/README.md`）
 4. 把角色 sprite sheet 放进 `personalization/assets/`，或直接替换 `public/assets/pet/*.png`
    （素材规范：横向 sheet、240 px 帧、透明 PNG、6–12 FPS、状态命名保持一致）
    - 若素材是一张"粉色背景 + 白猫"的方形立绘，可直接执行（先 export 生成表情帧，
@@ -207,6 +211,10 @@ src-tauri/
 - [x] v0.7：用户明确添加/查看/删除的本地记忆（最多 20 条、单条 120 字）
 - [x] v0.8：关系驱动反应、分层动画、边缘探头、配饰专属反应与稀有陪伴仪式
 - [x] v0.9：精细部位点击、方向性反馈与六件配饰独立点击反应
+- [x] v0.10：拖拽动势、配饰/蝴蝶结弹簧、落地阴影与动作交叉淡化
+- [x] v0.11–v0.11.1：稀疏生命感微动作与原生拖拽落地反馈
+- [x] v0.12.0–v0.12.4：行为上下文、动作导演、实时性格和表情导演
+- [x] v0.12.5：首次启动相处资料设置、运行时对白资料更新与版本信息收口
 - [x] 本人电脑实测：置顶、拖拽、托盘、开机启动、100% DPI + 128% 文本缩放
 - [ ] 双屏 / 不同缩放比例屏幕组合待实机复测
 - [ ] 只私下发给收礼人（AirDrop / USB / 私密链接），不公开传播

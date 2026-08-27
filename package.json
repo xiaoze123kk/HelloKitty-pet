@@ -1,7 +1,7 @@
 {
   "name": "kittypet",
   "private": true,
-  "version": "0.12.4",
+  "version": "0.12.5",
   "type": "module",
   "scripts": {
     "sync:personalization": "node scripts/sync-personalization.mjs",
@@ -19,7 +19,10 @@
     "test:drag": "node scripts/test-drag-dynamics.mjs",
     "test:micro": "node scripts/test-micro-motion.mjs",
     "test:expression": "node scripts/test-expression-assets.mjs",
-    "test:all": "npm run test:relationship && npm run test:behavior && npm run test:growth && npm run test:migration && npm run test:reactions && npm run test:touch && npm run test:vfx && npm run test:spring && npm run test:transition && npm run test:drag && npm run test:micro && npm run test:expression",
+    "test:profile": "node scripts/test-profile.mjs",
+    "test:features": "node scripts/test-pet-features.mjs",
+    "test:machine": "node scripts/test-pet-machine.mjs",
+    "test:all": "npm run test:relationship && npm run test:behavior && npm run test:growth && npm run test:migration && npm run test:reactions && npm run test:touch && npm run test:vfx && npm run test:spring && npm run test:transition && npm run test:drag && npm run test:micro && npm run test:expression && npm run test:features && npm run test:machine && npm run test:profile",
     "preview": "vite preview",
     "tauri": "tauri"
   },

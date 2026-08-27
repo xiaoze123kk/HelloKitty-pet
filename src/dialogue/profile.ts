@@ -1,42 +1,26 @@
 import profileJson from "../../personalization/profile.json";
 import datesJson from "../../personalization/dates.json";
 import type { ProfileData, SpecialDate } from "./types";
+import { normalizeProfile, normalizeSpecialDates } from "./profileData";
 
-function normalizeProfile(raw: unknown): ProfileData {
-  const profile = (raw ?? {}) as Partial<ProfileData>;
-  const rawDates = (datesJson as { specialDates?: unknown }).specialDates;
-  const specialDates: SpecialDate[] = Array.isArray(rawDates)
-    ? rawDates
-        .map((item) => item as Partial<SpecialDate>)
-        .filter(
-          (item): item is SpecialDate =>
-            typeof item.id === "string" &&
-            typeof item.month === "number" &&
-            item.month >= 1 &&
-            item.month <= 12 &&
-            typeof item.day === "number" &&
-            item.day >= 1 &&
-            item.day <= 31 &&
-            typeof item.label === "string",
-        )
-    : [];
+const DEFAULT_SPECIAL_DATES = normalizeSpecialDates(
+  (datesJson as { specialDates?: unknown }).specialDates,
+);
 
-  return {
-    nickname: typeof profile.nickname === "string" ? profile.nickname : "你",
-    yourNickname:
-      typeof profile.yourNickname === "string" ? profile.yourNickname : "我",
-    specialDates,
-  };
-}
+export { normalizeProfile, normalizeSpecialDates } from "./profileData";
 
-export const PROFILE: ProfileData = normalizeProfile(profileJson);
+export const PROFILE: ProfileData = normalizeProfile(
+  { ...profileJson, specialDates: DEFAULT_SPECIAL_DATES },
+  DEFAULT_SPECIAL_DATES,
+);
 
 export function specialDateForToday(
   now: Date,
+  profile: ProfileData = PROFILE,
 ): SpecialDate | undefined {
   const month = now.getMonth() + 1;
   const day = now.getDate();
-  return PROFILE.specialDates.find(
+  return profile.specialDates.find(
     (d) => d.month === month && d.day === day,
   );
 }
@@ -58,10 +42,11 @@ export function renderTemplate(
     headpatCount?: number;
     streak?: number;
   },
+  profile: ProfileData = PROFILE,
 ): string {
   return text
-    .replaceAll("{{nickname}}", PROFILE.nickname)
-    .replaceAll("{{yourNickname}}", PROFILE.yourNickname)
+    .replaceAll("{{nickname}}", profile.nickname)
+    .replaceAll("{{yourNickname}}", profile.yourNickname)
     .replaceAll(
       "{{daysTogether}}",
       String(daysBetween(ctx.installedAt, ctx.now) + 1),

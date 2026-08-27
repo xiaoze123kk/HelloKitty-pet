@@ -53,10 +53,10 @@
       ]
     },
     "happy": {
-      "fps": 9,
+      "fps": 5,
       "loop": false,
       "blink": false,
-      "base": "happy",
+      "base": "open",
       "ease": "sineInOut",
       "keyframes": [
         {
@@ -65,36 +65,10 @@
           "angle": 0,
           "dy": 0
         },
-        {
-          "scale": 1.04,
-          "scaleY": 1.04,
-          "angle": -3,
-          "dy": -14
-        },
-        {
-          "scale": 1.02,
-          "scaleY": 1.02,
-          "angle": 2,
-          "dy": -18
-        },
-        {
-          "scale": 1.0,
-          "scaleY": 0.96,
-          "angle": -2,
-          "dy": 2
-        },
-        {
-          "scale": 1.04,
-          "scaleY": 1.02,
-          "angle": 3,
-          "dy": -8
-        },
-        {
-          "scale": 1.0,
-          "scaleY": 1.0,
-          "angle": 0,
-          "dy": 0
-        }
+        { "scale": 1.004, "scaleY": 1.002, "angle": -1, "dy": -1 },
+        { "scale": 1.008, "scaleY": 1.004, "angle": 1, "dy": -3 },
+        { "scale": 1.002, "scaleY": 1.001, "angle": 0, "dy": -1 },
+        { "scale": 1.0, "scaleY": 1.0, "angle": 0, "dy": 0 }
       ]
     },
     "shy": {
@@ -1524,6 +1498,56 @@
         { "scale": 1.03, "scaleY": 1.01, "angle": 2, "dy": -3 },
         { "scale": 1.02, "scaleY": 1.0, "angle": -1, "dy": -1 },
         { "scale": 1.01, "scaleY": 1.0, "angle": 1, "dy": 0 },
+        { "scale": 1.0, "scaleY": 1.0, "angle": 0, "dy": 0 }
+      ]
+    },
+    "annoyed": {
+      "fps": 4,
+      "loop": true,
+      "blink": false,
+      "base": "open",
+      "ease": "sineInOut",
+      "keyframes": [
+        { "scale": 1.0, "scaleY": 1.0, "angle": -0.8, "dy": 0 },
+        { "scale": 1.002, "scaleY": 0.998, "angle": 0.8, "dy": 0.5 },
+        { "scale": 1.0, "scaleY": 1.0, "angle": -0.8, "dy": 0 },
+        { "scale": 1.0, "scaleY": 1.0, "angle": 0, "dy": 0 }
+      ]
+    },
+    "curiousWink": {
+      "fps": 6,
+      "loop": false,
+      "blink": false,
+      "base": "open",
+      "ease": "sineInOut",
+      "keyframes": [
+        { "scale": 1.0, "scaleY": 1.0, "angle": 0, "dy": 0 },
+        { "scale": 1.004, "scaleY": 1.002, "angle": -0.8, "dy": -1 },
+        { "scale": 1.002, "scaleY": 1.001, "angle": 0.4, "dy": -2 },
+        { "scale": 1.0, "scaleY": 1.0, "angle": 0, "dy": 0 }
+      ]
+    },
+    "nightCompanion": {
+      "fps": 2,
+      "loop": true,
+      "blink": false,
+      "base": "half",
+      "ease": "sineInOut",
+      "keyframes": [
+        { "scale": 1.0, "scaleY": 1.0, "angle": -0.4, "dy": 0, "brightness": 0.96 },
+        { "scale": 1.001, "scaleY": 1.002, "angle": 0.2, "dy": 0.5, "brightness": 0.94 },
+        { "scale": 1.0, "scaleY": 1.0, "angle": -0.4, "dy": 0, "brightness": 0.96 }
+      ]
+    },
+    "pettedEnjoy": {
+      "fps": 2,
+      "loop": true,
+      "blink": false,
+      "base": "happy",
+      "ease": "sineInOut",
+      "keyframes": [
+        { "scale": 1.0, "scaleY": 1.0, "angle": 0, "dy": 0 },
+        { "scale": 1.001, "scaleY": 1.003, "angle": -0.2, "dy": 0.4 },
         { "scale": 1.0, "scaleY": 1.0, "angle": 0, "dy": 0 }
       ]
     }

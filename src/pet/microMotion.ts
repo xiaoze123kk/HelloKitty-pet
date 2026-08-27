@@ -106,16 +106,28 @@ export function microProfileForMotion(
   motion: PetVisualMotion,
 ): MicroMotionProfile {
   if (motion === "idle") return MICRO_PROFILES.calm;
-  if (motion === "sleep" || motion === "sleepy") return MICRO_PROFILES.sleepy;
+  if (
+    motion === "sleep" ||
+    motion === "sleepy" ||
+    motion === "nightCompanion"
+  ) {
+    return MICRO_PROFILES.sleepy;
+  }
   if (
     motion === "happy" ||
     motion === "petted" ||
+    motion === "pettedEnjoy" ||
     motion === "reunion" ||
     motion === "celebrate"
   ) {
     return MICRO_PROFILES.bright;
   }
-  if (motion === "look" || motion === "peek" || motion === "edgePeek") {
+  if (
+    motion === "look" ||
+    motion === "peek" ||
+    motion === "edgePeek" ||
+    motion === "curiousWink"
+  ) {
     return MICRO_PROFILES.curious;
   }
   return MICRO_MOTION_OFF;

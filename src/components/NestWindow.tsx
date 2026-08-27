@@ -17,6 +17,7 @@ import type {
   RelationshipEvent,
 } from "../relationship/relationshipEngine";
 import { MEMORY_CATALOG } from "../relationship/relationshipEngine";
+import { APP_VERSION } from "../app/appVersion";
 
 type NestTab = "today" | "memory" | "wardrobe" | "keepsakes";
 
@@ -249,7 +250,7 @@ export function NestWindow({ preview = false }: { preview?: boolean }) {
     <main className="nest-window">
       <header className="nest-header" onPointerDown={startWindowDrag}>
         <div>
-          <span className="nest-kicker">KITTY PET · v0.9</span>
+          <span className="nest-kicker">KITTY PET · v{APP_VERSION}</span>
           <h1>我们的小窝</h1>
         </div>
         <button className="nest-close" onClick={hide} aria-label="关闭小窝">

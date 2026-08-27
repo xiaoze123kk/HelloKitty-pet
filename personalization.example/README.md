@@ -1,7 +1,8 @@
 # personalization 私人内容目录
 
 本目录**不进 git**（`.gitignore` 已排除）。它由 `npm run sync:personalization` 从
-`personalization.example/` 补缺生成，之后请在这里改真实内容。
+`personalization.example/` 补缺生成，之后请在这里改真实内容。日常使用也可以直接在 KittyPet
+里打开“设置 → 相处资料”，不用手动编辑 JSON。
 
 ## profile.json
 
