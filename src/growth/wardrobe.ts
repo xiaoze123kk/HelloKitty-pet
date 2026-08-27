@@ -39,8 +39,8 @@ export interface AccessoryDefinition {
   imageUrl?: string;
   /** 大头版本的视觉锚点，避免沿用全身角色的胸口或肩颈坐标。 */
   anchor: AccessoryAnchor;
-  /** 耳机等夹持式配饰必须逐帧贴合头部；其余配饰默认保留轻微弹性。 */
-  poseBinding?: AccessoryPoseBinding;
+  /** 所有配饰都必须逐帧贴合 Kitty，避免动作中产生悬浮或滞后。 */
+  poseBinding: AccessoryPoseBinding;
   placement: AccessoryPlacement;
   /** 透明图集单元内真正可点击的可见区域。 */
   hitArea: AccessoryHitArea;
@@ -69,6 +69,7 @@ export const WARDROBE_CATALOG: readonly AccessoryDefinition[] = [
     cell: null,
     imageUrl: "/assets/accessories/soft-cap.png?v=1",
     anchor: "crown",
+    poseBinding: "rigid",
     placement: { x: 34, y: -8, width: 138, height: 112 },
     hitArea: { x: 42, y: 9, width: 120, height: 88 },
     layer: "front",
@@ -100,6 +101,7 @@ export const WARDROBE_CATALOG: readonly AccessoryDefinition[] = [
     cell: null,
     imageUrl: "/assets/accessories/christmas-hat.png?v=1",
     anchor: "crown",
+    poseBinding: "rigid",
     placement: { x: 34, y: -8, width: 145, height: 118 },
     hitArea: { x: 43, y: 9, width: 127, height: 94 },
     layer: "front",
@@ -113,6 +115,7 @@ export const WARDROBE_CATALOG: readonly AccessoryDefinition[] = [
     cell: null,
     imageUrl: "/assets/accessories/halloween-pumpkin.png?v=1",
     anchor: "temple",
+    poseBinding: "rigid",
     placement: { x: 0, y: 28, width: 102, height: 108 },
     hitArea: { x: 8, y: 57, width: 86, height: 70 },
     layer: "front",
@@ -125,6 +128,7 @@ export const WARDROBE_CATALOG: readonly AccessoryDefinition[] = [
     unlockHint: "发现“第一次回应”后获得",
     cell: { column: 0, row: 0 },
     anchor: "temple",
+    poseBinding: "rigid",
     placement: { x: 29, y: 87, width: 48, height: 48 },
     hitArea: { x: 31, y: 89, width: 44, height: 44 },
     layer: "front",
@@ -137,6 +141,7 @@ export const WARDROBE_CATALOG: readonly AccessoryDefinition[] = [
     unlockHint: "发现“最熟悉的位置”后获得",
     cell: { column: 1, row: 0 },
     anchor: "temple",
+    poseBinding: "rigid",
     placement: { x: 3, y: 18, width: 110, height: 82 },
     hitArea: { x: 8, y: 22, width: 96, height: 72 },
     layer: "front",
@@ -150,6 +155,7 @@ export const WARDROBE_CATALOG: readonly AccessoryDefinition[] = [
     cell: null,
     imageUrl: "/assets/accessories/moon-sleep-cap.png?v=1",
     anchor: "crown",
+    poseBinding: "rigid",
     placement: { x: 44, y: 8, width: 128, height: 104 },
     hitArea: { x: 53, y: 19, width: 110, height: 82 },
     layer: "front",
@@ -163,6 +169,7 @@ export const WARDROBE_CATALOG: readonly AccessoryDefinition[] = [
     cell: null,
     imageUrl: "/assets/accessories/seasonal-wreath.png?v=1",
     anchor: "crown",
+    poseBinding: "rigid",
     placement: { x: 33, y: 13, width: 155, height: 123 },
     hitArea: { x: 42, y: 24, width: 137, height: 103 },
     layer: "front",
@@ -175,6 +182,7 @@ export const WARDROBE_CATALOG: readonly AccessoryDefinition[] = [
     unlockHint: "发现“抓不到的光点”后获得",
     cell: { column: 0, row: 2 },
     anchor: "chin",
+    poseBinding: "rigid",
     placement: { x: 62, y: 190, width: 116, height: 74 },
     hitArea: { x: 70, y: 212, width: 100, height: 28 },
     layer: "behind",
@@ -193,25 +201,26 @@ export function normalizeAccessoryId(value: unknown): AccessoryId | null {
 
 export function isAccessoryUnlocked(
   id: AccessoryId,
-  unlockedMemories: readonly string[],
+  _unlockedMemories: readonly string[],
 ): boolean {
+  // 当前版本直接开放整个目录；unlockMemoryId 仍保留用于关系收藏叙事。
   const item = WARDROBE_CATALOG.find((candidate) => candidate.id === id);
-  return Boolean(item && unlockedMemories.includes(item.unlockMemoryId));
+  return Boolean(item);
 }
 
 export function wardrobeSnapshot(
-  unlockedMemories: readonly string[],
+  _unlockedMemories: readonly string[],
   selectedId: AccessoryId | null,
 ): WardrobeSnapshot {
   const safeSelected =
-    selectedId && isAccessoryUnlocked(selectedId, unlockedMemories)
+    selectedId && isAccessoryUnlocked(selectedId, _unlockedMemories)
       ? selectedId
       : null;
   return {
     selectedId: safeSelected,
     items: WARDROBE_CATALOG.map((item) => ({
       ...item,
-      unlocked: unlockedMemories.includes(item.unlockMemoryId),
+      unlocked: isAccessoryUnlocked(item.id, _unlockedMemories),
     })),
   };
 }

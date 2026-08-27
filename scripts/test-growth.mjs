@@ -77,8 +77,19 @@ assert.equal(
 );
 assert.ok(
   wardrobe.WARDROBE_CATALOG.every((item) => item.unlockMemoryId),
-  "every accessory must have a relationship unlock",
+  "every accessory must retain relationship unlock metadata",
 );
+assert.ok(
+  wardrobe.WARDROBE_CATALOG.every((item) => item.poseBinding === "rigid"),
+  "every accessory must follow the pet pose without spring lag",
+);
+for (const item of wardrobe.WARDROBE_CATALOG) {
+  assert.equal(
+    wardrobe.isAccessoryUnlocked(item.id, []),
+    true,
+    `${item.id} should be available without relationship memories`,
+  );
+}
 for (const item of wardrobe.WARDROBE_CATALOG) {
   if (item.imageUrl) {
     await fs.access(
@@ -131,14 +142,17 @@ assert.equal(
 );
 assert.equal(
   wardrobe.wardrobeSnapshot([], "soft_cap").selectedId,
-  null,
-  "locked selection must be cleared",
+  "soft_cap",
+  "all accessory selections should remain available",
+);
+assert.ok(
+  wardrobe.wardrobeSnapshot([], null).items.every((item) => item.unlocked),
+  "all wardrobe items should be unlocked",
 );
 const headphones = wardrobe.WARDROBE_CATALOG.find(
   (item) => item.id === "padded_headphones",
 );
 assert.equal(headphones?.anchor, "temple");
-assert.equal(headphones?.poseBinding, "rigid");
 assert.match(headphones?.imageUrl ?? "", /padded-headphones-v2\.png/);
 assert.equal(headphones?.extraHitAreas?.length, 2);
 

@@ -84,7 +84,7 @@ function AccessoryLayer({
       className="pet-accessory-pose pet-layer-accessory-pose"
       data-layer={item.layer}
       data-anchor={item.anchor}
-      data-pose-binding={item.poseBinding ?? "spring"}
+      data-pose-binding={item.poseBinding}
     >
       <span className="pet-attachment-base" style={attachmentStyle(motion, item)}>
         <span

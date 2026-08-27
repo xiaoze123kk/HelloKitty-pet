@@ -87,19 +87,22 @@ assert.equal(
   "远离边缘时不应为了探头横穿桌面",
 );
 
-assert.equal(layered.accessoryReactionFor("moon_cap", "sleep"), "doze");
-assert.equal(layered.accessoryReactionFor("cloud_clip", "celebrate"), "sparkle");
 assert.equal(layered.accessoryReactionFor(null, "celebrate"), "none");
-assert.equal(layered.accessoryReactionFor("soft_cap", "accessoryTouch"), "bounce");
-assert.equal(layered.accessoryReactionFor("padded_headphones", "accessoryTouch"), "glow");
-assert.equal(layered.accessoryReactionFor("padded_headphones", "walk"), "none");
-assert.equal(layered.accessoryReactionFor("padded_headphones", "sway"), "none");
-assert.equal(layered.accessoryReactionFor("padded_headphones", "tease"), "none");
-assert.equal(layered.accessoryReactionFor("christmas_hat", "accessoryTouch"), "bounce");
-assert.equal(layered.accessoryReactionFor("halloween_pumpkin", "accessoryTouch"), "sparkle");
-assert.equal(layered.accessoryReactionFor("moon_cap", "accessoryTouch"), "doze");
-assert.equal(layered.accessoryReactionFor("cloud_clip", "accessoryTouch"), "sparkle");
-assert.equal(layered.accessoryReactionFor("seasonal_wreath", "accessoryTouch"), "sparkle");
-assert.equal(layered.accessoryReactionFor("ribbon_scarf", "accessoryTouch"), "flutter");
+for (const accessoryId of [
+  "soft_cap",
+  "padded_headphones",
+  "christmas_hat",
+  "halloween_pumpkin",
+  "moon_cap",
+  "cloud_clip",
+  "seasonal_wreath",
+  "ribbon_scarf",
+  "paw_badge",
+]) {
+  assert.equal(layered.accessoryReactionFor(accessoryId, "accessoryTouch"), "glow");
+  for (const motion of ["walk", "sway", "tease", "sleep", "celebrate"]) {
+    assert.equal(layered.accessoryReactionFor(accessoryId, motion), "none");
+  }
+}
 
 console.log("reaction checks passed");

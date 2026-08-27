@@ -98,7 +98,7 @@ export interface PetPreferences {
   animations: AnimationPreferences;
   /** 陪伴提醒开关与节奏 */
   reminders: ReminderPreferences;
-  /** 当前穿戴；解锁资格由关系记录决定。 */
+  /** 当前穿戴；所有目录内配饰均可直接使用。 */
   wardrobe: WardrobePreferences;
   /** 首次启动设置与本地称呼资料。 */
   identity: IdentityPreferences;
