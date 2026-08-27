@@ -25,6 +25,10 @@ import {
   type MotionCompletionGate,
 } from "./motionTransition";
 import { SpriteAnimation } from "./SpriteAnimation";
+import {
+  EXPRESSION_ASSET_URLS,
+  expressionAssetUrlForMotion,
+} from "./expressionAssets";
 
 interface ProceduralAnimationProps {
   /** 由 XState 状态机推导出的动作 */
@@ -75,7 +79,7 @@ function loadImage(src: string): Promise<HTMLImageElement> {
 function preloadCoreExpressionAssets(): Promise<void> {
   if (!coreExpressionPreload) {
     coreExpressionPreload = Promise.all(
-      Object.values(EXPRESSION_URLS).map((src) =>
+      [...Object.values(EXPRESSION_URLS), ...Object.values(EXPRESSION_ASSET_URLS)].map((src) =>
         loadImage(src).catch(() => null),
       ),
     ).then(() => undefined);
@@ -110,6 +114,7 @@ function loadImageIfExists(src: string): Promise<HTMLImageElement | null> {
  * 眨眼帧同理：{state}-blink.png → 自动闭眼帧
  */
 async function resolveMotionAssets(
+  motion: PetVisualMotion,
   specKey: string,
   spec: ProceduralMotionSpec,
 ): Promise<{
@@ -118,13 +123,22 @@ async function resolveMotionAssets(
   blink: HTMLImageElement | null;
 }> {
   const overrideBase = await loadImageIfExists(stateBaseOverrideUrl(specKey));
+  const expressionUrl = expressionAssetUrlForMotion(motion);
+  const expressionBase = expressionUrl
+    ? await loadImage(expressionUrl).catch(() => null)
+    : null;
   const base =
     overrideBase ??
+    expressionBase ??
     (await loadImage(EXPRESSION_URLS[spec.base]).catch(() => null));
 
   let half: HTMLImageElement | null = null;
   let blink: HTMLImageElement | null = null;
-  if (spec.blink) {
+  // The authored expression files form one stable face. Mixing them with the
+  // legacy procedural half/closed frames causes a visible identity jump, so
+  // blinking stays disabled only while an expression override is active.
+  const usingExpressionOverride = overrideBase === null && expressionBase !== null;
+  if (spec.blink && !usingExpressionOverride) {
     half = await loadImage(EXPRESSION_URLS.half).catch(() => null);
     const overrideBlink = await loadImageIfExists(
       stateBlinkOverrideUrl(specKey),
@@ -318,7 +332,7 @@ export function ProceduralAnimation({
     const spec = getMotionSpec(motion);
     const fromImage = lastDrawnImageRef.current ?? baseImageRef.current;
     const fromPose = lastPoseRef.current;
-    resolveMotionAssets(specKey, spec).then(({ base, half, blink }) => {
+    resolveMotionAssets(motion, specKey, spec).then(({ base, half, blink }) => {
       if (disposed) return;
       if (!base) {
         pendingTransitionRef.current = null;
@@ -423,7 +437,10 @@ export function ProceduralAnimation({
         timelineStart = now;
       }
 
-      const elapsed = now - (timelineStart ?? now);
+      // A freshly scheduled rAF may carry a timestamp a fraction earlier than
+      // the effect's performance.now() baseline. Clamp that harmless skew so
+      // the first frame never resolves to keyframe index -1.
+      const elapsed = Math.max(0, now - (timelineStart ?? now));
 
       if (!spec.loop && elapsed >= totalMs) {
         drawPose(spec.keyframes[lastIndex]);

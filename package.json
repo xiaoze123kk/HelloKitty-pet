@@ -18,7 +18,8 @@
     "test:transition": "node scripts/test-motion-transition.mjs",
     "test:drag": "node scripts/test-drag-dynamics.mjs",
     "test:micro": "node scripts/test-micro-motion.mjs",
-    "test:all": "npm run test:relationship && npm run test:behavior && npm run test:growth && npm run test:migration && npm run test:reactions && npm run test:touch && npm run test:vfx && npm run test:spring && npm run test:transition && npm run test:drag && npm run test:micro",
+    "test:expression": "node scripts/test-expression-assets.mjs",
+    "test:all": "npm run test:relationship && npm run test:behavior && npm run test:growth && npm run test:migration && npm run test:reactions && npm run test:touch && npm run test:vfx && npm run test:spring && npm run test:transition && npm run test:drag && npm run test:micro && npm run test:expression",
     "preview": "vite preview",
     "tauri": "tauri"
   },
