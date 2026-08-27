@@ -292,6 +292,14 @@ body {
     scale(var(--accessory-pose-scale-x), var(--accessory-pose-scale-y));
 }
 
+/* 夹在头上的配饰不能有弹簧迟滞，必须与角色关键帧完全同相。 */
+.pet-layer-accessory-pose[data-pose-binding="rigid"] {
+  transform:
+    translateY(var(--pose-dy))
+    rotate(var(--pose-angle))
+    scale(var(--pose-scale-x), var(--pose-scale-y));
+}
+
 .pet-layer-bow-pose {
   transform:
     translateY(var(--bow-pose-dy))

@@ -88,7 +88,11 @@ export function PetApp() {
         disabled={controller.settingsOpen || debugOpen}
         accessoryHitRegion={
           selectedAccessory
-            ? { id: selectedAccessory.id, ...selectedAccessory.hitArea }
+            ? {
+                id: selectedAccessory.id,
+                ...selectedAccessory.hitArea,
+                extraAreas: selectedAccessory.extraHitAreas,
+              }
             : null
         }
         onClick={controller.onPetClick}

@@ -38,6 +38,7 @@ export interface AccessoryHitRegion {
   y: number;
   width: number;
   height: number;
+  extraAreas?: readonly Omit<AccessoryHitRegion, "id" | "extraAreas">[];
 }
 
 /** 旧关系统计只区分头、蝴蝶结和下方；细分部位在写入时归并到这里。 */
@@ -71,13 +72,15 @@ export function classifyTouchTarget(
   const x = (frameX / frameSize) * FRAME_SIZE;
   const y = (frameY / frameSize) * FRAME_SIZE;
 
-  if (
-    accessory &&
-    x >= accessory.x &&
-    x <= accessory.x + accessory.width &&
-    y >= accessory.y &&
-    y <= accessory.y + accessory.height
-  ) {
+  const accessoryAreas = accessory
+    ? [accessory, ...(accessory.extraAreas ?? [])]
+    : [];
+  if (accessory && accessoryAreas.some((area) =>
+    x >= area.x &&
+    x <= area.x + area.width &&
+    y >= area.y &&
+    y <= area.y + area.height
+  )) {
     return { id: "accessory", accessoryId: accessory.id };
   }
 

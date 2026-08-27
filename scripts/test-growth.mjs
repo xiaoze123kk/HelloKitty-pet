@@ -45,7 +45,31 @@ assert.equal(
   "CSS and Tauri window heights must match",
 );
 
-assert.equal(wardrobe.WARDROBE_CATALOG.length, 6);
+assert.equal(wardrobe.WARDROBE_CATALOG.length, 9);
+assert.deepEqual(
+  wardrobe.WARDROBE_CATALOG.map((item) => item.id),
+  [
+    "soft_cap",
+    "padded_headphones",
+    "christmas_hat",
+    "halloween_pumpkin",
+    "paw_badge",
+    "cloud_clip",
+    "moon_cap",
+    "seasonal_wreath",
+    "ribbon_scarf",
+  ],
+  "wardrobe order should keep the new collection together",
+);
+assert.equal(wardrobe.normalizeAccessoryId("calendar_pin"), null);
+assert.equal(wardrobe.normalizeAccessoryId("golden_bell"), null);
+assert.equal(wardrobe.normalizeAccessoryId("rose_glasses"), null);
+assert.ok(
+  !wardrobe.WARDROBE_CATALOG.some((item) =>
+    ["珍珠小领结", "三日别针"].includes(item.name),
+  ),
+  "retired accessories must not remain in the wardrobe",
+);
 assert.equal(
   new Set(wardrobe.WARDROBE_CATALOG.map((item) => item.id)).size,
   wardrobe.WARDROBE_CATALOG.length,
@@ -56,6 +80,11 @@ assert.ok(
   "every accessory must have a relationship unlock",
 );
 for (const item of wardrobe.WARDROBE_CATALOG) {
+  if (item.imageUrl) {
+    await fs.access(
+      new URL(`../public${item.imageUrl.split("?")[0]}`, import.meta.url),
+    );
+  }
   assert.ok(
     item.hitArea.x >= item.placement.x &&
       item.hitArea.y >= item.placement.y &&
@@ -65,6 +94,15 @@ for (const item of wardrobe.WARDROBE_CATALOG) {
         item.placement.y + item.placement.height,
     `${item.id} hit area must stay inside its visible placement`,
   );
+  for (const area of item.extraHitAreas ?? []) {
+    assert.ok(
+      area.x >= item.placement.x &&
+        area.y >= item.placement.y &&
+        area.x + area.width <= item.placement.x + item.placement.width &&
+        area.y + area.height <= item.placement.y + item.placement.height,
+      `${item.id} extra hit area must stay inside its visible placement`,
+    );
+  }
   if (item.anchor === "chin") {
     assert.equal(
       item.placement.x + item.placement.width / 2,
@@ -81,26 +119,28 @@ for (const item of wardrobe.WARDROBE_CATALOG) {
     );
   } else {
     assert.ok(
-      item.placement.y + item.placement.height <= 140,
-      `${item.id} must remain on the head instead of drifting toward the body`,
+      item.placement.y + item.placement.height <=
+        (item.id === "padded_headphones" ? 240 : 140),
+      `${item.id} must remain on the head or face instead of drifting toward the body`,
     );
   }
 }
 assert.equal(
-  wardrobe.wardrobeSnapshot([], "golden_bell").selectedId,
+  wardrobe.wardrobeSnapshot(["days_30"], "soft_cap").selectedId,
+  "soft_cap",
+);
+assert.equal(
+  wardrobe.wardrobeSnapshot([], "soft_cap").selectedId,
   null,
   "locked selection must be cleared",
 );
-assert.equal(
-  wardrobe.wardrobeSnapshot(["interactions_100"], "golden_bell").selectedId,
-  "golden_bell",
+const headphones = wardrobe.WARDROBE_CATALOG.find(
+  (item) => item.id === "padded_headphones",
 );
-const pearlPetiteBow = wardrobe.WARDROBE_CATALOG.find(
-  (item) => item.id === "golden_bell",
-);
-assert.equal(pearlPetiteBow?.name, "珍珠小领结");
-assert.equal(pearlPetiteBow?.cell, null);
-assert.match(pearlPetiteBow?.imageUrl ?? "", /pearl-petite-bow\.png/);
+assert.equal(headphones?.anchor, "temple");
+assert.equal(headphones?.poseBinding, "rigid");
+assert.match(headphones?.imageUrl ?? "", /padded-headphones-v2\.png/);
+assert.equal(headphones?.extraHitAreas?.length, 2);
 
 const neutralAttachment = attachment.attachmentPoseFor("idle", "chin");
 assert.deepEqual(neutralAttachment, attachment.NEUTRAL_ATTACHMENT_POSE);

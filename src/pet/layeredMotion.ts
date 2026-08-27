@@ -25,38 +25,50 @@ export function accessoryReactionFor(
   if (!accessoryId) return "none";
   if (motion === "accessoryTouch") {
     switch (accessoryId) {
+      case "soft_cap":
+        return "bounce";
+      case "padded_headphones":
+        return "glow";
+      case "christmas_hat":
+        return "bounce";
+      case "halloween_pumpkin":
+        return "sparkle";
       case "moon_cap":
         return "doze";
-      case "golden_bell":
-        return "glow";
       case "cloud_clip":
         return "sparkle";
-      case "calendar_pin":
-        return "bounce";
+      case "seasonal_wreath":
+        return "sparkle";
       case "ribbon_scarf":
         return "flutter";
       case "paw_badge":
         return "glow";
     }
   }
-  if (accessoryId === "moon_cap" && SLEEP_MOTIONS.has(motion)) return "doze";
   if (
-    accessoryId === "golden_bell" &&
-    ["walk", "landing", "headpat", "happy", "reunion", "sway"].includes(motion)
+    ["soft_cap", "christmas_hat"].includes(accessoryId) &&
+    ["celebrate", "jump", "sway"].includes(motion)
   ) {
-    return "glow";
+    return "bounce";
   }
+  if (
+    accessoryId === "halloween_pumpkin" &&
+    ["happy", "reunion", "celebrate"].includes(motion)
+  ) {
+    return "sparkle";
+  }
+  if (
+    accessoryId === "seasonal_wreath" &&
+    ["happy", "reunion", "celebrate", "headpat"].includes(motion)
+  ) {
+    return "sparkle";
+  }
+  if (accessoryId === "moon_cap" && SLEEP_MOTIONS.has(motion)) return "doze";
   if (
     accessoryId === "cloud_clip" &&
     ["headpat", "happy", "reunion", "celebrate", "bow"].includes(motion)
   ) {
     return "sparkle";
-  }
-  if (
-    accessoryId === "calendar_pin" &&
-    ["celebrate", "jump"].includes(motion)
-  ) {
-    return "bounce";
   }
   if (
     accessoryId === "ribbon_scarf" &&

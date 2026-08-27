@@ -84,6 +84,7 @@ function AccessoryLayer({
       className="pet-accessory-pose pet-layer-accessory-pose"
       data-layer={item.layer}
       data-anchor={item.anchor}
+      data-pose-binding={item.poseBinding ?? "spring"}
     >
       <span className="pet-attachment-base" style={attachmentStyle(motion, item)}>
         <span
@@ -347,6 +348,7 @@ export function PetRig({
       data-headpat-reaction={headpatReaction}
       data-peek-edge={edgePeekSide ?? "none"}
       data-accessory-reaction={accessoryReaction}
+      data-accessory-id={accessoryId ?? "none"}
       data-expression={expression ?? "none"}
       data-touch-target={touchTarget?.id ?? "none"}
       data-micro-active={microProfile.active ? "true" : "false"}

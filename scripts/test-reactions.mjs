@@ -88,11 +88,18 @@ assert.equal(
 );
 
 assert.equal(layered.accessoryReactionFor("moon_cap", "sleep"), "doze");
-assert.equal(layered.accessoryReactionFor("golden_bell", "headpat"), "glow");
 assert.equal(layered.accessoryReactionFor("cloud_clip", "celebrate"), "sparkle");
 assert.equal(layered.accessoryReactionFor(null, "celebrate"), "none");
+assert.equal(layered.accessoryReactionFor("soft_cap", "accessoryTouch"), "bounce");
+assert.equal(layered.accessoryReactionFor("padded_headphones", "accessoryTouch"), "glow");
+assert.equal(layered.accessoryReactionFor("padded_headphones", "walk"), "none");
+assert.equal(layered.accessoryReactionFor("padded_headphones", "sway"), "none");
+assert.equal(layered.accessoryReactionFor("padded_headphones", "tease"), "none");
+assert.equal(layered.accessoryReactionFor("christmas_hat", "accessoryTouch"), "bounce");
+assert.equal(layered.accessoryReactionFor("halloween_pumpkin", "accessoryTouch"), "sparkle");
 assert.equal(layered.accessoryReactionFor("moon_cap", "accessoryTouch"), "doze");
-assert.equal(layered.accessoryReactionFor("golden_bell", "accessoryTouch"), "glow");
 assert.equal(layered.accessoryReactionFor("cloud_clip", "accessoryTouch"), "sparkle");
+assert.equal(layered.accessoryReactionFor("seasonal_wreath", "accessoryTouch"), "sparkle");
+assert.equal(layered.accessoryReactionFor("ribbon_scarf", "accessoryTouch"), "flutter");
 
 console.log("reaction checks passed");

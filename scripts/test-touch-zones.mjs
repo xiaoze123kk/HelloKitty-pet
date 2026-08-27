@@ -12,6 +12,16 @@ const compiled = ts.transpileModule(source, {
 const zones = await import(
   `data:text/javascript;base64,${Buffer.from(compiled).toString("base64")}`
 );
+const wardrobeSource = await fs.readFile(
+  new URL("../src/growth/wardrobe.ts", import.meta.url),
+  "utf8",
+);
+const wardrobeCompiled = ts.transpileModule(wardrobeSource, {
+  compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext },
+}).outputText;
+const wardrobe = await import(
+  `data:text/javascript;base64,${Buffer.from(wardrobeCompiled).toString("base64")}`
+);
 
 const target = (x, y, accessory = null) =>
   zones.classifyTouchTarget(x, y, accessory).id;
@@ -37,6 +47,25 @@ assert.equal(
   "left_ear",
   "配饰透明命中框外仍应落回耳朵",
 );
+
+for (const item of wardrobe.WARDROBE_CATALOG) {
+  const region = {
+    id: item.id,
+    ...item.hitArea,
+    extraAreas: item.extraHitAreas,
+  };
+  for (const area of [item.hitArea, ...(item.extraHitAreas ?? [])]) {
+    const center = {
+      x: area.x + area.width / 2,
+      y: area.y + area.height / 2,
+    };
+    assert.deepEqual(
+      zones.classifyTouchTarget(center.x, center.y, region),
+      { id: "accessory", accessoryId: item.id },
+      `${item.id} must have clickable visible hit regions`,
+    );
+  }
+}
 
 assert.equal(zones.classifyTouchPart(92, 117), "head");
 assert.equal(zones.classifyTouchPart(205, 48), "bow");

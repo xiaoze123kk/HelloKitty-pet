@@ -315,6 +315,34 @@ const LOCAL_TOUCH_LINES: Partial<Record<PetTouchTargetId, string[]>> = {
 };
 
 const ACCESSORY_TOUCH_LINES: Record<AccessoryId, string[]> = {
+  soft_cap: [
+    "帽檐被你碰得轻轻弹了一下。",
+    "今天的心情，适合戴这顶莓果软帽。",
+    "帽子没有歪，你的手很会整理。",
+    "这朵小绒球替我收下你的招呼啦。",
+    "戴好帽子，今天也要精神一点。",
+  ],
+  padded_headphones: [
+    "耳机软软的，刚好把你的声音留下来。",
+    "碰到耳机啦？我正在听你说话。",
+    "左边一朵云，右边一朵云，都是安静的陪伴。",
+    "耳机轻轻晃了一下，像在跟你点头。",
+    "今天的背景音乐，就选你的声音吧。",
+  ],
+  christmas_hat: [
+    "圣诞帽的绒球被你碰得摇摇晃晃。",
+    "叮叮当的祝福，先送给你。",
+    "这顶帽子把冬天也变得软绵绵啦。",
+    "你摸到我的小小节日啦。",
+    "圣诞快乐，今天也来陪我一会儿吧。",
+  ],
+  halloween_pumpkin: [
+    "小南瓜被你碰醒了：不给糖也可以陪我。",
+    "万圣节的捣蛋许可，盖章通过。",
+    "别怕，它只会对你露出笑脸。",
+    "南瓜灯亮一小下，照到你啦。",
+    "今天可以偷偷吓走一点点坏心情。",
+  ],
   paw_badge: [
     "爪印被你按亮啦。",
     "这是第一次回应留下的小徽章。",
@@ -329,13 +357,6 @@ const ACCESSORY_TOUCH_LINES: Record<AccessoryId, string[]> = {
     "云朵今天也乖乖待在这里。",
     "你刚才碰出了一点好天气。",
   ],
-  calendar_pin: [
-    "这是我们一起数过的日子。",
-    "别针把连续见面的日期别好啦。",
-    "今天这一格也有你的名字。",
-    "见面的日子，我都有好好收着。",
-    "又多了一个值得圈起来的今天。",
-  ],
   moon_cap: [
     "睡帽歪了一点点。",
     "碰到睡帽，我又有点困啦。",
@@ -343,19 +364,19 @@ const ACCESSORY_TOUCH_LINES: Record<AccessoryId, string[]> = {
     "帽子里藏着一个软绵绵的梦。",
     "再摸两下，我可要睡着喽。",
   ],
+  seasonal_wreath: [
+    "花环里藏着一整年的好天气。",
+    "你碰到花瓣啦，它们都在向你点头。",
+    "春天的花、夏天的叶子，都想陪你待一会儿。",
+    "这圈小叶子把今天也圈进好日子里啦。",
+    "四季慢慢转，我还是会在这里等你。",
+  ],
   ribbon_scarf: [
     "领结被你整理好啦。",
     "缎带轻轻飘了一下。",
     "这样系着是不是很神气？",
     "系在这里刚刚好，对吧？",
     "小领结很喜欢你的整理手法。",
-  ],
-  golden_bell: [
-    "小领结被你整理得刚刚好。",
-    "珍珠亮了一下，你看见了吗？",
-    "一百次回应，都系在这里啦。",
-    "今天也要戴得漂漂亮亮。",
-    "这枚小领结只给熟悉的人碰。",
   ],
 };
 
@@ -1375,13 +1396,15 @@ export function usePetController(): PetController {
                 const welcomeEvent =
                   normalized === "moon_cap"
                     ? ({ type: "IDLE_YAWN" } as const)
-                    : normalized === "golden_bell" || normalized === "ribbon_scarf"
-                      ? ({ type: "IDLE_SWAY" } as const)
-                      : normalized === "calendar_pin"
-                        ? ({ type: "IDLE_JUMP" } as const)
-                        : normalized === "paw_badge"
-                          ? ({ type: "IDLE_NOD" } as const)
-                          : ({ type: "IDLE_BOW" } as const);
+                    : normalized === "soft_cap" || normalized === "christmas_hat"
+                      ? ({ type: "IDLE_JUMP" } as const)
+                      : normalized === "padded_headphones" || normalized === "ribbon_scarf"
+                        ? ({ type: "IDLE_SWAY" } as const)
+                        : normalized === "halloween_pumpkin" || normalized === "seasonal_wreath"
+                          ? ({ type: "IDLE_BOW" } as const)
+                          : normalized === "paw_badge"
+                            ? ({ type: "IDLE_NOD" } as const)
+                            : ({ type: "IDLE_BOW" } as const);
                 actor.send(welcomeEvent);
               }
               if (prefsStoreRef.current) {
