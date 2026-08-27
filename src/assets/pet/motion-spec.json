@@ -1514,19 +1514,6 @@
         { "scale": 1.0, "scaleY": 1.0, "angle": 0, "dy": 0 }
       ]
     },
-    "curiousWink": {
-      "fps": 6,
-      "loop": false,
-      "blink": false,
-      "base": "open",
-      "ease": "sineInOut",
-      "keyframes": [
-        { "scale": 1.0, "scaleY": 1.0, "angle": 0, "dy": 0 },
-        { "scale": 1.004, "scaleY": 1.002, "angle": -0.8, "dy": -1 },
-        { "scale": 1.002, "scaleY": 1.001, "angle": 0.4, "dy": -2 },
-        { "scale": 1.0, "scaleY": 1.0, "angle": 0, "dy": 0 }
-      ]
-    },
     "nightCompanion": {
       "fps": 2,
       "loop": true,

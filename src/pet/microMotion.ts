@@ -125,8 +125,7 @@ export function microProfileForMotion(
   if (
     motion === "look" ||
     motion === "peek" ||
-    motion === "edgePeek" ||
-    motion === "curiousWink"
+    motion === "edgePeek"
   ) {
     return MICRO_PROFILES.curious;
   }

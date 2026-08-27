@@ -39,15 +39,8 @@ assert.equal(machine.machineStateKey(actor.getSnapshot().value), "pettedEnjoy");
 actor.send({ type: "HOLD_END" });
 assert.equal(machine.machineStateKey(actor.getSnapshot().value), "idle");
 
-actor.send({ type: "POINTER_NEAR" });
-assert.equal(machine.stateToMotion(actor.getSnapshot().value), "curiousWink");
-actor.send({ type: "POINTER_LEAVE" });
-assert.equal(machine.stateToMotion(actor.getSnapshot().value), "peek");
-
 actor.send({ type: "BEGIN_NIGHT_COMPANION" });
 assert.equal(machine.stateToMotion(actor.getSnapshot().value), "nightCompanion");
-actor.send({ type: "POINTER_NEAR" });
-assert.equal(machine.stateToMotion(actor.getSnapshot().value), "curiousWink");
 
 actor.send({ type: "PLAY_RITUAL", ritual: "reunion" });
 assert.equal(machine.machineStateKey(actor.getSnapshot().value), "ritualReunionSurprise");

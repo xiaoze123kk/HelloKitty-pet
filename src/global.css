@@ -79,8 +79,7 @@ body {
 .pet-rig-vital,
    .pet-rig-micro-response,
    .pet-rig-expression-accent,
-   .pet-rig-emotion,
-   .pet-expression-wink {
+   .pet-rig-emotion {
   position: relative;
   width: 240px;
   height: 240px;
@@ -227,10 +226,6 @@ body {
   animation: expression-annoyed-frown 920ms ease-in-out infinite;
 }
 
-.pet-rig[data-motion="curiousWink"] .pet-rig-expression-accent {
-  animation: expression-curious-attend 820ms ease-in-out both;
-}
-
 @keyframes expression-surprised-pop {
   0% { transform: translateY(1px) scale(.992, .985); }
   42% { transform: translateY(-1px) scale(1.015, 1.012); }
@@ -324,34 +319,6 @@ body {
 
 .pet-eye-glint-left { left: 66px; }
 .pet-eye-glint-right { left: 166px; }
-
-.pet-expression-wink {
-  position: absolute;
-  z-index: 5;
-  pointer-events: none;
-  left: 57px;
-  top: 145px;
-  width: 26px;
-  height: 22px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, .98);
-  opacity: 0;
-}
-
-.pet-expression-wink::after {
-  content: "";
-  position: absolute;
-  left: 2px;
-  right: 2px;
-  bottom: 1px;
-  height: 9px;
-  border-bottom: 3px solid #392c2e;
-  border-radius: 0 0 50% 50%;
-}
-
-.pet-rig[data-motion="curiousWink"] .pet-expression-wink-left {
-  animation: curious-wink 780ms ease-out both;
-}
 
 .pet-micro-ear,
 .pet-micro-nose {
@@ -1632,12 +1599,6 @@ body {
   font-size: 12px;
   font-weight: 700;
   color: #b06b84;
-}
-
-@keyframes curious-wink {
-  0%, 28% { opacity: 0; transform: scale(.92); }
-  42%, 62% { opacity: 1; transform: scale(1); }
-  82%, 100% { opacity: 0; transform: scale(.96); }
 }
 
 .settings-intro {

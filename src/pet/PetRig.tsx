@@ -379,7 +379,6 @@ export function PetRig({
                   <div className="pet-face-dynamics pet-rig-follow-pose" aria-hidden="true">
                     <span className="pet-eye-glint pet-eye-glint-left" />
                     <span className="pet-eye-glint pet-eye-glint-right" />
-                    <span className="pet-expression-wink pet-expression-wink-left" />
                     <span className="pet-micro-ear pet-micro-ear-left" />
                     <span className="pet-micro-ear pet-micro-ear-right" />
                     <span className="pet-micro-nose" />

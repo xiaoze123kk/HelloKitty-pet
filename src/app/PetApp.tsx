@@ -99,8 +99,6 @@ export function PetApp() {
         onWheelZoom={controller.onWheelZoom}
         onHoldStart={controller.onHoldStart}
         onHoldEnd={controller.onHoldEnd}
-        onPointerNear={controller.onPointerNear}
-        onPointerLeave={controller.onPointerLeave}
       >
         <PetRig
           motion={controller.motion}

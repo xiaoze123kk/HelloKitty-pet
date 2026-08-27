@@ -119,7 +119,6 @@ const SPEC_KEYS: Record<PetVisualMotion, string> = {
   whiskerTouch: "whiskerTouch",
   faceTouch: "faceTouch",
   accessoryTouch: "accessoryTouch",
-  curiousWink: "curiousWink",
   nightCompanion: "nightCompanion",
   pettedEnjoy: "pettedEnjoy",
 };

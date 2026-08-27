@@ -32,7 +32,6 @@ const MOTION_EXPRESSIONS: Partial<Record<PetVisualMotion, ExpressionAsset>> = {
   sleepy: "sleepy_soft",
   moonGreeting: "sleepy_soft",
   nightCompanion: "sleepy_soft",
-  curiousWink: "curious",
 };
 
 /**

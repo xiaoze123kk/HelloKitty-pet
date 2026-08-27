@@ -76,8 +76,6 @@ export type PetEvent =
   | { type: "TEASE" }
   | { type: "POUNCE" }
   | { type: "EDGE_PEEK" }
-  | { type: "POINTER_NEAR" }
-  | { type: "POINTER_LEAVE" }
   | { type: "BEGIN_NIGHT_COMPANION" }
   | { type: "END_NIGHT_COMPANION" }
   | { type: "PLAY_RITUAL"; ritual: CompanionRitualKind }
@@ -434,12 +432,6 @@ export const petMachine = setup({
     idle: {
       initial: "still",
       on: {
-        POINTER_NEAR: {
-          target: ".curiousWink",
-        },
-        POINTER_LEAVE: {
-          target: ".peek",
-        },
         IDLE_STRETCH: [
           {
             guard: "idleActionsOn",
@@ -527,14 +519,6 @@ export const petMachine = setup({
       },
       states: {
         still: {},
-        curiousWink: {
-          after: {
-            1_100: { target: "#pet.idle.still" },
-          },
-          on: {
-            ANIMATION_FINISHED: { target: "#pet.idle.still" },
-          },
-        },
         // 小动作是 idle 的子状态：切换时不会退出 idle，
         // 因此 45 秒困倦倒计时不会被小动作重置
         stretch: {
@@ -907,9 +891,7 @@ export const petMachine = setup({
       },
     },
     nightCompanion: {
-      on: {
-        POINTER_NEAR: { target: "#pet.idle.curiousWink" },
-      },
+      // 深夜陪伴态只响应已有的点击 / 拖拽 / 起床链路，不响应鼠标悬停。
     },
   },
 });
@@ -966,8 +948,6 @@ export function stateToMotion(stateValue: unknown): PetVisualMotion {
           return "dizzy";
         case "peek":
           return "peek";
-        case "curiousWink":
-          return "curiousWink";
         default:
           return "idle";
       }

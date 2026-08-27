@@ -40,18 +40,10 @@ assert.match(machine, /pettedEnjoy/);
 assert.match(machine, /ritualReunionSurprise/);
 assert.match(machine, /nightCompanion/);
 
-const interaction = await fs.readFile(
-  new URL("../src/pet/InteractionArea.tsx", import.meta.url),
-  "utf8",
-);
-assert.match(interaction, /onPointerEnter/);
-assert.match(interaction, /onPointerLeave/);
-
 const css = await fs.readFile(
   new URL("../src/global.css", import.meta.url),
   "utf8",
 );
-assert.match(css, /curious-wink/);
 assert.match(css, /expression-annoyed-frown/);
 
 console.log("pet feature checks passed");

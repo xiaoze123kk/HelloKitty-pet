@@ -83,7 +83,6 @@ export type PetVisualMotion =
   | "whiskerTouch"
   | "faceTouch"
   | "accessoryTouch"
-  | "curiousWink"
   | "nightCompanion"
   | "pettedEnjoy";
 
@@ -132,7 +131,6 @@ export const petMotions: Record<PetVisualMotion, MotionConfig> = {
   whiskerTouch: sheetConfig("/assets/pet/shake.png", "whiskerTouch"),
   faceTouch: sheetConfig("/assets/pet/clicked.png", "faceTouch"),
   accessoryTouch: sheetConfig("/assets/pet/bow.png", "accessoryTouch"),
-  curiousWink: sheetConfig("/assets/pet/look.png", "curiousWink"),
   nightCompanion: sheetConfig("/assets/pet/sleepy.png", "nightCompanion"),
   pettedEnjoy: sheetConfig("/assets/pet/happy.png", "pettedEnjoy"),
 };

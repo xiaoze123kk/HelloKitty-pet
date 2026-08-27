@@ -32,7 +32,6 @@ const expected = {
   annoyed: "annoyed",
   sleepy: "sleepy_soft",
   moonGreeting: "sleepy_soft",
-  curiousWink: "curious",
   nightCompanion: "sleepy_soft",
 };
 

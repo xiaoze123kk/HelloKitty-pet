@@ -411,8 +411,6 @@ export interface PetController {
   onAnimationFinished: () => void;
   onHoldStart: () => void;
   onHoldEnd: () => void;
-  onPointerNear: () => void;
-  onPointerLeave: () => void;
   /** 设置面板：直接指定缩放比例 */
   onScaleChange: (value: number) => void;
   /** 桌宠上 Ctrl+滚轮：按 deltaY 方向步进缩放 */
@@ -2060,16 +2058,6 @@ export function usePetController(): PetController {
     setHearts(false);
   }, [actor]);
 
-  const onPointerNear = useCallback(() => {
-    cancelBehaviorPlanRef.current();
-    actor.send({ type: "POINTER_NEAR" });
-  }, [actor]);
-
-  const onPointerLeave = useCallback(() => {
-    cancelBehaviorPlanRef.current();
-    actor.send({ type: "POINTER_LEAVE" });
-  }, [actor]);
-
   const openSettings = useCallback(() => {
     cancelBehaviorPlanRef.current();
     settingsOpenRef.current = true;
@@ -2292,8 +2280,6 @@ export function usePetController(): PetController {
     onAnimationFinished,
     onHoldStart,
     onHoldEnd,
-    onPointerNear,
-    onPointerLeave,
     onScaleChange,
     onWheelZoom,
     toggleAlwaysOnTop,
