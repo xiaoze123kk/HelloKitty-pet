@@ -30,6 +30,7 @@ import {
   type MicroCue,
 } from "./microMotion";
 import { attachmentPoseFor } from "./attachmentPose";
+import { expressionAssetForMotion } from "./expressionAssets";
 
 interface PetRigProps {
   motion: PetVisualMotion;
@@ -147,6 +148,7 @@ export function PetRig({
     ? WARDROBE_CATALOG.find((item) => item.id === accessoryId) ?? null
     : null;
   const accessoryReaction = accessoryReactionFor(accessoryId, motion);
+  const expression = expressionAssetForMotion(motion);
   const microProfile = microMotion
     ? microProfileForMotion(motion)
     : MICRO_MOTION_OFF;
@@ -345,6 +347,7 @@ export function PetRig({
       data-headpat-reaction={headpatReaction}
       data-peek-edge={edgePeekSide ?? "none"}
       data-accessory-reaction={accessoryReaction}
+      data-expression={expression ?? "none"}
       data-touch-target={touchTarget?.id ?? "none"}
       data-micro-active={microProfile.active ? "true" : "false"}
       data-micro-mood={microProfile.id}
@@ -356,52 +359,54 @@ export function PetRig({
         <div className="pet-rig-drag-response">
           <div className="pet-rig-vital">
             <div className="pet-rig-micro-response">
-              <div className="pet-rig-emotion">
-                {accessory?.layer === "behind" && (
-                  <AccessoryLayer item={accessory} motion={motion} />
-                )}
+              <div className="pet-rig-expression-accent">
+                <div className="pet-rig-emotion">
+                  {accessory?.layer === "behind" && (
+                    <AccessoryLayer item={accessory} motion={motion} />
+                  )}
 
-                <ProceduralAnimation
-                  motion={motion}
-                  zoom={zoom}
-                  onFinished={onFinished}
-                  onPose={mirrorPose}
-                />
-
-                <div className="pet-bow-sheen-pose pet-layer-bow-pose" aria-hidden="true">
-                  <span className="pet-bow-sheen" />
-                </div>
-
-                <div className="pet-face-dynamics pet-rig-follow-pose" aria-hidden="true">
-                  <span className="pet-eye-glint pet-eye-glint-left" />
-                  <span className="pet-eye-glint pet-eye-glint-right" />
-                  <span className="pet-micro-ear pet-micro-ear-left" />
-                  <span className="pet-micro-ear pet-micro-ear-right" />
-                  <span className="pet-micro-nose" />
-                  <span className="pet-whiskers pet-whiskers-left">
-                    <i />
-                    <i />
-                    <i />
-                  </span>
-                  <span className="pet-whiskers pet-whiskers-right">
-                    <i />
-                    <i />
-                    <i />
-                  </span>
-                </div>
-
-                {accessory && accessory.layer !== "behind" && (
-                  <AccessoryLayer item={accessory} motion={motion} />
-                )}
-                {motion === "noseBoop" && (
-                  <span className="pet-touch-nose-ring" aria-hidden="true" />
-                )}
-                {motion === "cheekTouch" && (
-                  <span
-                    className={`pet-touch-cheek pet-touch-${touchTarget?.id ?? "face"}`}
-                    aria-hidden="true"
+                  <ProceduralAnimation
+                    motion={motion}
+                    zoom={zoom}
+                    onFinished={onFinished}
+                    onPose={mirrorPose}
                   />
-                )}
+
+                  <div className="pet-bow-sheen-pose pet-layer-bow-pose" aria-hidden="true">
+                    <span className="pet-bow-sheen" />
+                  </div>
+
+                  <div className="pet-face-dynamics pet-rig-follow-pose" aria-hidden="true">
+                    <span className="pet-eye-glint pet-eye-glint-left" />
+                    <span className="pet-eye-glint pet-eye-glint-right" />
+                    <span className="pet-micro-ear pet-micro-ear-left" />
+                    <span className="pet-micro-ear pet-micro-ear-right" />
+                    <span className="pet-micro-nose" />
+                    <span className="pet-whiskers pet-whiskers-left">
+                      <i />
+                      <i />
+                      <i />
+                    </span>
+                    <span className="pet-whiskers pet-whiskers-right">
+                      <i />
+                      <i />
+                      <i />
+                    </span>
+                  </div>
+
+                  {accessory && accessory.layer !== "behind" && (
+                    <AccessoryLayer item={accessory} motion={motion} />
+                  )}
+                  {motion === "noseBoop" && (
+                    <span className="pet-touch-nose-ring" aria-hidden="true" />
+                  )}
+                  {motion === "cheekTouch" && (
+                    <span
+                      className={`pet-touch-cheek pet-touch-${touchTarget?.id ?? "face"}`}
+                      aria-hidden="true"
+                    />
+                  )}
+                </div>
               </div>
             </div>
           </div>

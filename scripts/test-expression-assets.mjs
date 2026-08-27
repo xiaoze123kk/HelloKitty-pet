@@ -58,4 +58,20 @@ const renderer = await fs.readFile(
 assert.match(renderer, /expressionAssetUrlForMotion\(motion\)/);
 assert.match(renderer, /spec\.blink && !usingExpressionOverride/);
 
+const rig = await fs.readFile(
+  new URL("../src/pet/PetRig.tsx", import.meta.url),
+  "utf8",
+);
+assert.match(rig, /data-expression=\{expression \?\? "none"\}/);
+assert.match(rig, /className="pet-rig-expression-accent"/);
+
+const css = await fs.readFile(new URL("../src/global.css", import.meta.url), "utf8");
+for (const expression of ["surprised", "curious", "blush", "sleepy_soft"]) {
+  assert.match(css, new RegExp(`data-expression="${expression}"`));
+}
+assert.match(
+  css,
+  /@media \(prefers-reduced-motion: reduce\)[\s\S]*?\.pet-rig-expression-accent/,
+);
+
 console.log("expression asset checks passed");

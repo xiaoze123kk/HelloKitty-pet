@@ -78,6 +78,7 @@ body {
 .pet-rig-drag-response,
 .pet-rig-vital,
 .pet-rig-micro-response,
+.pet-rig-expression-accent,
 .pet-rig-emotion {
   position: relative;
   width: 240px;
@@ -197,6 +198,51 @@ body {
 
 .pet-rig[data-micro-cue="soft-lean"] .pet-rig-micro-response {
   animation: micro-soft-lean 920ms ease-in-out both;
+}
+
+/* ---------- 静态表情的小幅入场动效 ---------- */
+.pet-rig-expression-accent {
+  transform-origin: center 72%;
+}
+
+.pet-rig[data-expression="surprised"] .pet-rig-expression-accent {
+  animation: expression-surprised-pop 360ms cubic-bezier(.2, .82, .3, 1) both;
+}
+
+.pet-rig[data-expression="curious"] .pet-rig-expression-accent {
+  animation: expression-curious-attend 960ms ease-in-out both;
+}
+
+.pet-rig[data-expression="blush"] .pet-rig-expression-accent {
+  animation: expression-blush-settle 880ms ease-out both;
+}
+
+.pet-rig[data-expression="sleepy_soft"] .pet-rig-expression-accent {
+  animation: expression-sleepy-drift 5.8s ease-in-out infinite;
+}
+
+@keyframes expression-surprised-pop {
+  0% { transform: translateY(1px) scale(.992, .985); }
+  42% { transform: translateY(-1px) scale(1.015, 1.012); }
+  72% { transform: translateY(.35px) scale(.998, 1.002); }
+  100% { transform: translateY(0) scale(1); }
+}
+
+@keyframes expression-curious-attend {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  38% { transform: translate(.7px, -.5px) rotate(.9deg); }
+  68% { transform: translate(-.3px, 0) rotate(-.35deg); }
+}
+
+@keyframes expression-blush-settle {
+  0%, 100% { transform: translateY(0) scale(1); }
+  45% { transform: translateY(1px) scale(1.004, .997); }
+  72% { transform: translateY(-.4px) scale(.999, 1.002); }
+}
+
+@keyframes expression-sleepy-drift {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(.55px) rotate(-.28deg); }
 }
 
 @keyframes micro-breathe {
@@ -603,6 +649,7 @@ body {
   .pet-rig-drag-response,
   .pet-rig-vital,
   .pet-rig-micro-response,
+  .pet-rig-expression-accent,
   .pet-rig-emotion {
     animation: none !important;
     transition: none !important;
