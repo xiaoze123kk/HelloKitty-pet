@@ -53,11 +53,15 @@ assert.match(css, /data-micro-active/);
 assert.match(css, /micro-breathe/);
 assert.match(css, /micro-ear-accent/);
 assert.match(css, /micro-nose-wiggle/);
-assert.match(css, /\.pet-whiskers\s*\{[\s\S]*?opacity:\s*0;/);
+assert.doesNotMatch(
+  rig,
+  /pet-whiskers/,
+  "the base animation artwork already contains whiskers; do not add a duplicate overlay",
+);
 assert.doesNotMatch(
   css,
-  /data-micro-(?:mood|cue)[^{]*\.pet-whiskers/,
-  "ambient micro motion must never revive the independent whisker layer",
+  /pet-whiskers/,
+  "the base animation artwork already contains whiskers; do not animate a duplicate overlay",
 );
 
 console.log("micro motion checks passed");

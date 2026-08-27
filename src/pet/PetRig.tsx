@@ -382,16 +382,6 @@ export function PetRig({
                     <span className="pet-micro-ear pet-micro-ear-left" />
                     <span className="pet-micro-ear pet-micro-ear-right" />
                     <span className="pet-micro-nose" />
-                    <span className="pet-whiskers pet-whiskers-left">
-                      <i />
-                      <i />
-                      <i />
-                    </span>
-                    <span className="pet-whiskers pet-whiskers-right">
-                      <i />
-                      <i />
-                      <i />
-                    </span>
                   </div>
 
                   {accessory && accessory.layer !== "behind" && (

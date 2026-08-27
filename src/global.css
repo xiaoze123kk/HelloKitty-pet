@@ -385,39 +385,6 @@ body {
   pointer-events: none;
 }
 
-.pet-whiskers {
-  position: absolute;
-  top: 145px;
-  width: 46px;
-  height: 53px;
-  transform-origin: center center;
-  /* 原始立绘已经包含胡须；独立层只在明确触碰时短暂显现，避免叠影。 */
-  opacity: 0;
-}
-
-.pet-whiskers-left { left: -2px; }
-.pet-whiskers-right { right: -2px; }
-
-.pet-whiskers i {
-  position: absolute;
-  display: block;
-  width: 43px;
-  height: 3px;
-  border-radius: 99px;
-  background: #392c2e;
-  transform-origin: center;
-}
-
-.pet-whiskers i:nth-child(1) { top: 2px; }
-.pet-whiskers i:nth-child(2) { top: 23px; }
-.pet-whiskers i:nth-child(3) { top: 44px; }
-.pet-whiskers-left i:nth-child(1) { transform: rotate(4deg); }
-.pet-whiskers-left i:nth-child(2) { transform: rotate(-7deg); }
-.pet-whiskers-left i:nth-child(3) { transform: rotate(-22deg); }
-.pet-whiskers-right i:nth-child(1) { transform: rotate(-4deg); }
-.pet-whiskers-right i:nth-child(2) { transform: rotate(7deg); }
-.pet-whiskers-right i:nth-child(3) { transform: rotate(22deg); }
-
 .pet-rig[data-motion="look"] .pet-eye-glint,
 .pet-rig[data-motion="peek"] .pet-eye-glint,
 .pet-rig[data-motion="edgePeek"] .pet-eye-glint {
@@ -451,11 +418,6 @@ body {
 }
 .pet-rig[data-motion="cheekTouch"][data-touch-target="right_cheek"] .pet-rig-emotion {
   animation: touch-right-cheek 650ms ease-in-out both;
-}
-.pet-rig[data-motion="whiskerTouch"][data-touch-target="left_whiskers"] .pet-whiskers-left,
-.pet-rig[data-motion="whiskerTouch"][data-touch-target="right_whiskers"] .pet-whiskers-right {
-  opacity: .58;
-  animation: whisker-touch-shiver 110ms ease-in-out 5 alternate;
 }
 .pet-rig[data-motion="faceTouch"] .pet-rig-emotion {
   animation: face-touch-squish 560ms ease-out both;
@@ -628,7 +590,6 @@ body {
 @keyframes touch-right-ear { 0%,100% { transform: rotate(0); } 35% { transform: rotate(5deg) translateX(3px); } 65% { transform: rotate(-2deg); } }
 @keyframes touch-left-cheek { 0%,100% { transform: translateX(0); } 45% { transform: translateX(-6px) scaleX(.98); } }
 @keyframes touch-right-cheek { 0%,100% { transform: translateX(0); } 45% { transform: translateX(6px) scaleX(.98); } }
-@keyframes whisker-touch-shiver { from { rotate: -3deg; scale: .96 1; } to { rotate: 3deg; scale: 1.05 1; } }
 @keyframes face-touch-squish { 0%,100% { transform: scale(1); } 42% { transform: scale(1.035,.965) translateY(2px); } }
 @keyframes nose-ring-pop { 0% { opacity: 0; scale: .4; } 42% { opacity: 1; scale: 1.2; } 100% { opacity: 0; scale: 1.5; } }
 @keyframes cheek-blush-pop { 0% { opacity: 0; scale: .55; } 45% { opacity: 1; scale: 1.12; } 100% { opacity: .35; scale: 1; } }
