@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import {
   formatScale,
   MAX_SCALE,
@@ -510,6 +511,17 @@ export function SettingsPanel({
       <div className="settings-footer">
         KittyPet v{APP_VERSION} · 完全离线运行，不上传任何数据
       </div>
+
+      <button
+        className="settings-quit"
+        onClick={() => {
+          void invoke("quit_app").catch((error) => {
+            console.error("quit KittyPet failed:", error);
+          });
+        }}
+      >
+        退出 KittyPet
+      </button>
     </div>
   );
 }

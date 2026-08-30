@@ -198,6 +198,11 @@ fn open_nest(app: tauri::AppHandle) {
     open_nest_window(&app);
 }
 
+#[tauri::command]
+fn quit_app(app: tauri::AppHandle) {
+    app.exit(0);
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -207,6 +212,7 @@ pub fn run() {
             log_frontend,
             is_primary_mouse_button_pressed,
             open_nest,
+            quit_app,
             create_backup,
             restore_latest_backup
         ])
